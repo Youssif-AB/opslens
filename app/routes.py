@@ -70,7 +70,7 @@ def index():
             #required fields
             for field in Headers:
                 if not row.get(field):
-                    errors.append(f"missing {field}")
+                    errors.append(f"Missing {field}")
 
             if row.get("amount") and not valid_amount(row["amount"]):
                 errors.append("Invalid Amount")

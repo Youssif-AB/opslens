@@ -9,7 +9,7 @@ body {
 
 .app {
     display: flex;
-    min-height: 95vh;
+    min-height: 100vh;
 }
 
 .sidebar {
@@ -67,6 +67,13 @@ h1 {
     grid-template-columns: repeat(4, 1fr);
     gap: 1rem;
     margin-bottom: 10px;
+}
+
+.grid-mid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin: 1rem 0;
 }
 
 .grid-bottom {
@@ -180,4 +187,9 @@ h1 {
 
 .icon.orange {
   background: #f97316;
+}
+
+.chart-body {
+    height: 260px;
+    position: relative;
 }

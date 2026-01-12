@@ -47,16 +47,14 @@
         </div>
     </div>
 
-    <div class ="card wide">
-        <div class = "card-header">
-            <h3>Error Breakdown</h3>
-        </div>
-        <div class="card-body">
-            <ul>
-            {% for err, count in error_counts.items() %}
-            <li>{{ err }}: {{ count }}</li>
-            {% endfor %}
-            </ul>
+    <div class ="grid-mid">
+        <div class = "card">
+            <div class = "card-header">
+                <h3>Error Breakdown</h3>
+            </div>
+            <div class="card-body chart-body">
+                <canvas id = "errorChart"></canvas>
+            </div>
         </div>
     </div>
 
@@ -86,19 +84,89 @@
         </div>
         
         
-        <div class ="card">
-            <div class = "card-header">
-                <h3>By Status</h3>
+         <div class = card>
+            <div class="card-header">
+                <h3>Valid Rows by Status</h3>
             </div>
-            <div class="card-body">
-                <ul>
-                    {% for status, count in status_counts.items() %}
-                    <li>{{ status }}: {{ count }}</li>
-                    {% endfor %}
-                </ul>
+            <div class = "card-body chart-body">
+                <canvas id ="statusDonut"></canvas>
             </div>
         </div>
     </div>
 
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const errorCtx = document.getElementById('errorChart');
+
+  new Chart(errorCtx, {
+    type: 'bar',
+    data: {
+      labels: {{ error_counts.keys() | list | tojson }},
+      datasets: [{
+        data: {{ error_counts.values() | list | tojson }},
+        backgroundColor: [
+          '#ef4444',
+          '#f97316',
+          '#3b82f6',
+          '#22c55e',
+          '#a855f7'
+        ],
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#cbd5e1' }, grid: { display: false }},
+        y: {ticks: { color: '#cbd5e1' }, grid: { color: '#3f4452' }}
+      }
+    }
+  });
+</script>
+
+<script>
+  const statusCtx = document.getElementById('statusDonut');
+
+  if (statusCtx) {
+    const statusLabels = {{ status_counts.keys() | list | tojson }};
+    const statusValues = {{ status_counts.values() | list | tojson }};
+
+    new Chart(statusCtx, {
+      type: 'doughnut',
+      data: {
+        labels: statusLabels,
+        datasets: [{
+          data: statusValues,
+          backgroundColor: [
+            '#22c55e', // completed
+            '#ef4444'  // pending
+          ],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '70%',
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: {
+              color: '#cbd5e1',
+              padding: 16
+            }
+          }
+        }
+      }
+    });
+  }
+</script>
 {% endblock %}
