@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Opslens</title>
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+        />
+
+    </head>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+
+    <body>
+        <div class = "app">
+        <!--Side bar-->
+        <aside class = "sidebar">
+            
+            <div class = "sidebar-top">
+                <h2 class = "logo">Opslens</h2>
+                <nav>
+                    <a href="/">Upload</a>
+                    <a href="/dashboard">Overview</a>
+                    <a href="/integrity">Integrity</a>
+                    <a href="Analytics">Analytics</a>
+                </nav>
+            </div>
+
+            <div class = "sidebar-bottom">
+                <div class = "account-info">
+                    <div class = "avatar">YL</div>
+                    <div class = "name">Local User</div>
+                </div>
+                <div class = "switch">Sign Out</div>
+            </div>
+        </aside>
+
+        <main class = "content">
+            {% block content %}{% endblock %}
+        </main>
+        </div>
+    </body>
+
+</html>

@@ -12,10 +12,10 @@ def valid_amount(value):
         return True        
     except:
         return False
-    
+        
 def valid_timestamp(time):
     try:
-        datetime.fromisoformat(time)
+        datetime.fromisoformat(time.replace(" ", "T"))
         return True
     except:
         return False
@@ -127,7 +127,7 @@ def index():
             status_counts = status_counts
             )
         
-    return render_template("base.html")
+    return render_template("upload.html")
 
 @app.route("/health")
 def health():

@@ -1,66 +1,96 @@
-<!DOCTYPE html>
-<html>
-    <head>
-        <title> Opslens Dashboard</title>
-        <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+{% extends "layout.html" %}
 
-    </head>
+{% block content %}
 
-    <body>
-        <h1>Opslens Dashboard</h1>
+    <h2>Overview</h2>
 
-        <h2>Data Quality</h2>
+    <div class = "grid-top">
 
-        <div class = "grid">
-            <div class = "card">
+        <div class ="card">
+            <div class = "card-header">
                 <h3>Total Rows</h3>
+            </div>
+            <div class="card-body">
+                <i class="fa-solid fa-database icon red"></i>
                 <p>{{ total_rows }}</p>
-            </div>
-
-            <div class = "card">
-                <h3>Valid Rows</h3>
-                <p>{{ valid_rows }}</p>
-            </div>
-
-            <div class = "card">
-                <h3>Invalid Rows</h3>
-                <p>{{ invalid_rows }}</p>
-            </div>
-
-            <div class = "card">
-                <h3>Valid Percentage</h3>
-                <p>{{ valid_pct }}</p>
-            </div>
-
-            <div class = "card wide">
-                <h3>Error Breakdown</h3>
-                <ul>
-                    {% for err, count in error_counts.items() %}
-                    <li>{{ err }}: {{ count }}</li>
-                    {% endfor %}
-                </ul>
             </div>
         </div>
 
-        <h2> Aggregates (Valid Rows Only)</h2>
+        <div class ="card">
+            <div class = "card-header">
+                <h3>Valid Rows</h3>
+            </div>
+            <div class="card-body">
+                <i class="fa-solid fa-circle-check icon green"></i>
+                <p>{{ valid_rows }}</p>
+            </div>
+        </div>
 
-        <div class = "grid">
-            <div class = "card">
+        <div class ="card">
+            <div class = "card-header">
+                <h3>Invalid Rows</h3>
+            </div>
+            <div class="card-body">
+                <i class="fa-solid fa-triangle-exclamation icon orange"></i>
+                <p>{{ invalid_rows }}</p>
+            </div>
+        </div>
+
+        <div class ="card">
+            <div class = "card-header">
+                <h3>Valid Percentage</h3>
+            </div>
+            <div class="card-body">
+                <i class="fa-solid fa-percent icon blue"></i>
+                <p>{{ valid_pct }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class ="card wide">
+        <div class = "card-header">
+            <h3>Error Breakdown</h3>
+        </div>
+        <div class="card-body">
+            <ul>
+            {% for err, count in error_counts.items() %}
+            <li>{{ err }}: {{ count }}</li>
+            {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class = grid-bottom>
+
+        <div class ="card">
+            <div class = "card-header">
                 <h3>Total Amount</h3>
+            </div>
+            <div class="card-body">
+                <i class="fa-solid fa-dollar-sign icon green"></i>
                 <p>{{ total_amount }}</p>
             </div>
+        </div>
 
-            <div class="card">
+        <div class ="card">
+            <div class = "card-header">
                 <h3>By Category</h3>
+            </div>
+            <div class="card-body">
                 <ul>
-                    {% for cat, count in category_counts.items() %}
-                    <li>{{ cat }}: {{ count }}</li>
-                    {% endfor %}
+                {% for cat, count in category_counts.items() %}
+                <li>{{ cat }}: {{ count }}</li>
+                {% endfor %}
                 </ul>
             </div>
-
-            <div class = "card">
+        </div>
+        
+        
+        <div class ="card">
+            <div class = "card-header">
                 <h3>By Status</h3>
+            </div>
+            <div class="card-body">
                 <ul>
                     {% for status, count in status_counts.items() %}
                     <li>{{ status }}: {{ count }}</li>
@@ -68,6 +98,7 @@
                 </ul>
             </div>
         </div>
+    </div>
 
-    </body>
-</html>
+
+{% endblock %}
