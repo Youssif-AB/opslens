@@ -115,35 +115,17 @@ def index():
             status_counts[status] = status_counts.get(status, 0) + 1
 
 
-        report = (
-            "<pre>"
-            f"Total Rows: {total_rows}\n"
-            f"Valid Rows: {len(valid_rows)} \n"
-            f"Invalid Rows: {len(invalid_rows)}\n"
-            f"Valid %: {valid_pct}%\n\n"
-            "Error Breakdown: \n"
-
-        )
-
-        for err, count in error_counts.items():
-            report += f" - {err}: {count}\n"
-
-        report += f"\nAGGREGATES (VALID ROWS ONLY)\n"
-        report += f"----------------------------\n"
-        report += f"Total Amount: {round(total_amount, 2)}\n\n"
-        report += f"By Category:\n"
-
-        for cat, count in category_counts.items():
-            report += f" - {cat}: {count}\n"
-        
-        report += "\nBy Status:\n"
-
-        for status, count in status_counts.items():
-            report += f" - {status}: {count}\n"
-
-        report += "</pre>"
-
-        return report
+        return render_template(
+            "dashboard.html",
+            total_rows = total_rows,
+            valid_rows = len(valid_rows),
+            invalid_rows = len(invalid_rows),
+            valid_pct = valid_pct,
+            error_counts = error_counts,
+            total_amount = round(total_amount,2),
+            category_counts = category_counts,
+            status_counts = status_counts
+            )
         
     return render_template("base.html")
 

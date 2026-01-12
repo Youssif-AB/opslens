@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title> Opslens Dashboard</title>
+    </head>
+
+    <body>
+        <h1>Opslens Dashboard</h1>
+
+        <h2>Data Quality</h2>
+
+        <ul>
+            <li>Total Rows: {{ total_rows }}</li>
+            <li>Valid Rows: {{ valid_rows }}</li>
+            <li>Invalid Rows: {{ invalid_rows }}</li>
+            <li>Valid Percentage: {{ valid_pct }}%</li>
+        </ul>
+
+        <h3>Error Breakdown</h3>
+        <ul>
+            {% for err, count in error_counts.items() %}
+             <li>{{ err }}: {{ count }}</li>
+            {% endfor %}
+        </ul>
+
+        <hr>
+        
+        <h2> Aggregates (Valid Rows Only) </h2>
+
+        <p><strong>Total Amount:</strong> {{ total_amount }}</p>
+
+        <h3>By Category</h3>
+
+        <ul>
+            {% for cat, count in category_counts.items() %}
+                <li>{{ cat }}: {{ count }}</li>
+            {% endfor %}
+        </ul>
+
+        <h3>By Status</h3>
+        <ul>
+            {% for status, count in category_counts.items() %}
+                <li>{{ status }}: {{ count }}</li>
+            {% endfor %}
+        </ul>
+        
+    </body>
+</html>
