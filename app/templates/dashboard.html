@@ -52,46 +52,114 @@
             <div class = "card-header">
                 <h3>Error Breakdown</h3>
             </div>
-            <div class="card-body chart-body">
-                <canvas id = "errorChart"></canvas>
+            <div class="card-body chart-body error-wrap">
+                <div class="error-chart">
+                    <canvas id="errorChart"></canvas>
+                </div>
+
+                <div class="error-legend">
+                     <div class="legend-title">Summary</div>
+
+                    <div class="legend-list">
+                        {% set error_colors = ['#ef4444','#f97316','#3b82f6','#22c55e','#a855f7'] %}
+                        {% for label, value in error_counts.items() %}
+                        <div class="legend-row">
+                            <span class="dot" style="background: {{ error_colors[loop.index0] }}"></span>
+                            <span class="label">{{ label }}</span>
+                            <span class="value">{{ value }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+    
 
     <div class = grid-bottom>
 
-        <div class ="card">
+
+        <div class = "card aggregate-main">
             <div class = "card-header">
-                <h3>Total Amount</h3>
+                <h3>Aggregates (Valid Rows Only)</h3>
             </div>
-            <div class="card-body">
-                <i class="fa-solid fa-dollar-sign icon green"></i>
-                <p>{{ total_amount }}</p>
+
+            <div class="aggregate-main-body vertical">
+                <!-- TOP: TOTAL -->
+                <div class="aggregate-total top">
+                    <div class="label">Total Amount</div>
+                    <div class="value">${{ total_amount }}</div>
+                </div>
+
+                <!-- DONUT -->
+                <div class="aggregate-donut">
+                    <canvas id="categoryDonut"></canvas>
+                </div>
             </div>
         </div>
 
-        <div class ="card">
-            <div class = "card-header">
+        <div class="card category-card">
+            <div class="card-header">
                 <h3>By Category</h3>
             </div>
-            <div class="card-body">
-                <ul>
+
+            <div class="category-legend">
                 {% for cat, count in category_counts.items() %}
-                <li>{{ cat }}: {{ count }}</li>
+                <div class="category-row">
+                    {% set category_colors = {
+                        "Rent": "#ef4444",
+                        "Food": "#f97316",
+                        "Utilities": "#3b82f6",
+                        "Entertainment": "#22c55e",
+                        "Transport": "#a855f7"
+                    } %}
+                    <span class="dot" style="background: {{ category_colors.get(cat, '#64748b') }}"></span>
+                    <span class="label">{{ cat }}</span>
+                    <span class="value">{{ count }}</span>
+                </div>
                 {% endfor %}
-                </ul>
             </div>
         </div>
+
         
-        
-         <div class = card>
+        <div class = "card">
             <div class="card-header">
                 <h3>Valid Rows by Status</h3>
             </div>
-            <div class = "card-body chart-body">
-                <canvas id ="statusDonut"></canvas>
+
+            <div class = "donut-wrap">
+                <div class="donut-chart">
+                    <canvas id="statusDonut"></canvas>
+                </div>
+                
+                <div class = "donut-stats">
+                    <div class = "stat green">
+                        <span class ="dot"></span>
+                        <div>
+                            <div class="value">
+                                {{ status_counts['completed'] }}
+                            </div>
+                            <div class = "pct">
+                                {{ ((status_counts['completed'] / valid_rows) * 100) | round(1) }}%
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class = "stat red">
+                        <span class ="dot"></span>
+                        <div>
+                            <div class="value">
+                                {{ status_counts['pending'] }}
+                            </div>
+                            <div class = "pct">
+                                {{ ((status_counts['pending'] /valid_rows) * 100) | round(1)}}%
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
+
     </div>
 
 
@@ -101,72 +169,148 @@
 <script>
   const errorCtx = document.getElementById('errorChart');
 
-  new Chart(errorCtx, {
+    new Chart(errorCtx, {
     type: 'bar',
     data: {
-      labels: {{ error_counts.keys() | list | tojson }},
-      datasets: [{
+        labels: {{ error_counts.keys() | list | tojson }},
+        datasets: [{
         data: {{ error_counts.values() | list | tojson }},
         backgroundColor: [
-          '#ef4444',
-          '#f97316',
-          '#3b82f6',
-          '#22c55e',
-          '#a855f7'
+            '#ef4444',
+            '#f97316',
+            '#3b82f6',
+            '#22c55e',
+            '#a855f7'
         ],
         borderRadius: 6
-      }]
+        }]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false }
-      },
-      scales: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+        legend: { display: false },
+        datalabels: {
+            anchor: 'end',
+            align: 'end',
+            offset: 6,
+            color: '#e5e7eb',
+            font: {
+            weight: '600',
+            size: 15
+            },
+            formatter: (value) => value
+        }
+        },
+        scales: {
         x: {
-          ticks: { color: '#cbd5e1' }, grid: { display: false }},
-        y: {ticks: { color: '#cbd5e1' }, grid: { color: '#3f4452' }}
-      }
-    }
-  });
+            ticks: { color: '#cbd5e1' },
+            grid: { display: false },
+            border: { display: false }
+        },
+        y: {
+            ticks: { color: '#cbd5e1' },
+            grid: { color: '#3f4452' },
+            border: { display: false },
+            grace: '15%'
+        }
+        }
+    },
+    plugins: [ChartDataLabels]
+    });
 </script>
 
 <script>
-  const statusCtx = document.getElementById('statusDonut');
+    const centerTextPlugin = {
+        id: 'centerText',
+        afterDraw(chart) {
+            const { ctx } = chart;
+            const meta = chart.getDatasetMeta(0);
+            if (!meta?.data?.length) return;
 
-  if (statusCtx) {
-    const statusLabels = {{ status_counts.keys() | list | tojson }};
-    const statusValues = {{ status_counts.values() | list | tojson }};
+            const values = chart.data.datasets[0].data;
+            const total = values.reduce((a, b) => a + b, 0);
+            const max = Math.max(...values);
+            const pct = ((max / total) * 100).toFixed(1);
 
-    new Chart(statusCtx, {
-      type: 'doughnut',
-      data: {
-        labels: statusLabels,
-        datasets: [{
-          data: statusValues,
-          backgroundColor: [
-            '#22c55e', // completed
-            '#ef4444'  // pending
-          ],
-          borderWidth: 0
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '70%',
-        plugins: {
-          legend: {
-            position: 'right',
-            labels: {
-              color: '#cbd5e1',
-              padding: 16
-            }
-          }
+            const { x, y } = meta.data[0];
+
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            ctx.font = '700 26px system-ui';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(max, x, y - 10);
+
+            ctx.font = '400 14px system-ui';
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillText(`${pct}%`, x, y + 16);
+
+            ctx.restore();
         }
-      }
-    });
-  }
+    };
+
+const statusCtx = document.getElementById('statusDonut');
+
+new Chart(statusCtx, {
+  type: 'doughnut',
+  data: {
+    labels: ['Completed', 'Pending'],
+    datasets: [{
+      data: [
+        {{ status_counts['completed'] }},
+        {{ status_counts['pending'] }}
+      ],
+      backgroundColor: ['#22c55e', '#ef4444'],
+      borderWidth: 0
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '75%',
+    plugins: {
+      legend: { display: false },   
+      datalabels: { display: false } 
+    }
+  },
+  plugins: [centerTextPlugin]
+});
+
 </script>
+
+<script>
+const catCtx = document.getElementById('categoryDonut');
+
+new Chart(catCtx, {
+  type: 'doughnut',
+  data: {
+    labels: {{ category_counts.keys() | list | tojson }},
+    datasets: [{
+      data: {{ category_counts.values() | list | tojson }},
+      backgroundColor: [
+        '#ef4444',
+        '#f97316',
+        '#3b82f6',
+        '#22c55e',
+        '#a855f7',
+        '#14b8a6'
+      ],
+      borderWidth: 0
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '70%',
+    plugins: {
+      legend: { display: false },
+      datalabels: { display: false }
+    }
+  },
+  plugins: [centerTextPlugin]
+});
+</script>
+
 {% endblock %}
