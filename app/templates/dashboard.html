@@ -2,6 +2,8 @@
 <html>
     <head>
         <title> Opslens Dashboard</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+
     </head>
 
     <body>
@@ -9,40 +11,63 @@
 
         <h2>Data Quality</h2>
 
-        <ul>
-            <li>Total Rows: {{ total_rows }}</li>
-            <li>Valid Rows: {{ valid_rows }}</li>
-            <li>Invalid Rows: {{ invalid_rows }}</li>
-            <li>Valid Percentage: {{ valid_pct }}%</li>
-        </ul>
+        <div class = "grid">
+            <div class = "card">
+                <h3>Total Rows</h3>
+                <p>{{ total_rows }}</p>
+            </div>
 
-        <h3>Error Breakdown</h3>
-        <ul>
-            {% for err, count in error_counts.items() %}
-             <li>{{ err }}: {{ count }}</li>
-            {% endfor %}
-        </ul>
+            <div class = "card">
+                <h3>Valid Rows</h3>
+                <p>{{ valid_rows }}</p>
+            </div>
 
-        <hr>
-        
-        <h2> Aggregates (Valid Rows Only) </h2>
+            <div class = "card">
+                <h3>Invalid Rows</h3>
+                <p>{{ invalid_rows }}</p>
+            </div>
 
-        <p><strong>Total Amount:</strong> {{ total_amount }}</p>
+            <div class = "card">
+                <h3>Valid Percentage</h3>
+                <p>{{ valid_pct }}</p>
+            </div>
 
-        <h3>By Category</h3>
+            <div class = "card wide">
+                <h3>Error Breakdown</h3>
+                <ul>
+                    {% for err, count in error_counts.items() %}
+                    <li>{{ err }}: {{ count }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
 
-        <ul>
-            {% for cat, count in category_counts.items() %}
-                <li>{{ cat }}: {{ count }}</li>
-            {% endfor %}
-        </ul>
+        <h2> Aggregates (Valid Rows Only)</h2>
 
-        <h3>By Status</h3>
-        <ul>
-            {% for status, count in category_counts.items() %}
-                <li>{{ status }}: {{ count }}</li>
-            {% endfor %}
-        </ul>
-        
+        <div class = "grid">
+            <div class = "card">
+                <h3>Total Amount</h3>
+                <p>{{ total_amount }}</p>
+            </div>
+
+            <div class="card">
+                <h3>By Category</h3>
+                <ul>
+                    {% for cat, count in category_counts.items() %}
+                    <li>{{ cat }}: {{ count }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class = "card">
+                <h3>By Status</h3>
+                <ul>
+                    {% for status, count in status_counts.items() %}
+                    <li>{{ status }}: {{ count }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
     </body>
 </html>
