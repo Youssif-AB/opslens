@@ -97,6 +97,24 @@ def index():
             round((len(valid_rows)/total_rows) * 100, 2) if total_rows > 0 else 0
         )
 
+        # Row Aggregation
+
+        status_counts = {}
+        category_counts = {}
+        total_amount = 0.0
+
+        for row in valid_rows:
+            total_amount += float(row["amount"])
+
+        for row in valid_rows:
+            category = row["category"]
+            category_counts[category] = category_counts.get(category, 0) + 1
+
+        for row in valid_rows:
+            status = row["status"]
+            status_counts[status] = status_counts.get(status, 0) + 1
+
+
         report = (
             "<pre>"
             f"Total Rows: {total_rows}\n"
@@ -110,7 +128,21 @@ def index():
         for err, count in error_counts.items():
             report += f" - {err}: {count}\n"
 
+        report += f"\nAGGREGATES (VALID ROWS ONLY)\n"
+        report += f"----------------------------\n"
+        report += f"Total Amount: {round(total_amount, 2)}\n\n"
+        report += f"By Category:\n"
+
+        for cat, count in category_counts.items():
+            report += f" - {cat}: {count}\n"
+        
+        report += "\nBy Status:\n"
+
+        for status, count in status_counts.items():
+            report += f" - {status}: {count}\n"
+
         report += "</pre>"
+
         return report
         
     return render_template("base.html")
