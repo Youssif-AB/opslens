@@ -9,7 +9,7 @@ Headers = ['transaction_id', 'timestamp', 'amount', 'category', 'status']
 def valid_amount(value):
     try:
         float(value)
-        return True
+        return True        
     except:
         return False
     

@@ -1,0 +1,38 @@
+body {
+    font-family: system-ui, sans-serif;
+    background: #D3D3D3;
+    margin: 0;
+    padding: 2rem;
+}
+
+h1 {
+    margin-bottom: 1.5rem;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+}
+
+.card {
+    background: white;
+    padding: 1.25rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.card h3 {
+    margin-top: 0;
+    font-size: 1.25rem;
+    color: #000000;
+}
+
+.card p {
+    font-size: 1.6rem;
+    font-weight: bold;
+}
+
+.card.wide{
+    grid-column: span 4;
+}
