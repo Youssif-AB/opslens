@@ -55,22 +55,53 @@ body {
 }
 
 .sidebar .logo {
-  color: #4f8cff;
+  color: #ffffff;
   margin: 0 0 18px 0;
 }
 
-.sidebar nav a {
-  display: block;
-  color: #ccc;
-  text-decoration: none;
-  padding: 10px 0;
-  margin-bottom: 6px;
-  font-size: 15px;
+.logo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-bottom: 15px;
+  margin-top: 10px;
+  border-bottom: 2px solid #2a2f3a;
+  padding-bottom: 10px;
 }
 
+.logo-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+
+  margin-bottom: 15px;
+} 
+
+.sidebar nav a {
+  display: flex;
+  color: #ccc;
+  text-decoration: none;
+  padding: 10px 10px;
+  margin-bottom: 6px;
+  font-size: 17px;
+  font-weight: 500;
+  align-items: center;
+  gap: 12px;
+}
+
+.sidebar nav a i {
+  width: 18px;
+  text-align: center;
+  opacity: 0.9;
+
+}
 .sidebar nav a:last-child { margin-bottom: 0; }
 
-.sidebar nav a:hover { color: white; }
+.sidebar nav a:hover { 
+  background: rgba(255, 255, 255, 0.04);
+  color: white;
+}
 
 .account-info {
   display: flex;
@@ -109,7 +140,7 @@ body {
   min-width: 0;
   height: 100%;
   overflow: hidden;
-  padding: 18px 22px;     /* move everything up */
+  padding: 10px 22px;     /* move everything up */
 }
 
 /* Title spacing */
@@ -148,7 +179,7 @@ h1, h2 {
   padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   overflow: hidden;
 }
 
@@ -272,22 +303,31 @@ h1, h2 {
   color: #ffffff;
 }
 
-
 .donut-wrap {
+  width: 100%;
   display: flex;
   align-items: center;
-  gap: 18px;              
+  justify-content: space-between; /* donut left, stats right */
+  gap: 24px;           
 }
 
 .donut-chart {
-  width: 200px;          
-  height: 200px;         
+  width: 320px;
+  height: 320px;        
   position: relative;
 }
 
+.donut-stats {
+  margin-left: auto;
+}
+
 #statusDonut {
+  justify-content: flex-start;   
+  padding: 18px 18px;
+  margin-bottom: 10px;
   width: 100% !important;
   height: 100% !important;
+  display: block;
 }
 
 .stat {
@@ -306,13 +346,13 @@ h1, h2 {
 .stat.red .dot { background: #ef4444; }
 
 .stat .value {
-  font-size: 22px;        
+  font-size: 28px;        
   font-weight: 800;
   color: #ffffff;
 }
 
 .stat .pct {
-  font-size: 13px;
+  font-size: 14px;
   color: #cbd5e1;
 }
 
@@ -360,6 +400,7 @@ h1, h2 {
 
 /* Category legend card */
 .category-card {
+  justify-content: flex-start;
   padding: 18px 20px;    
 }
 
@@ -373,6 +414,8 @@ h1, h2 {
   display: flex;
   flex-direction: column;
   gap: 18px;              
+  justify-content: space-evenly;
+  flex: 1;
 
 .category-row {
   display: grid;
@@ -388,13 +431,17 @@ h1, h2 {
 }
 
 .category-row .label {
-  font-size: 18px;        
+  font-size: 21px;        
   font-weight: 500;
   color: #e5e7eb;
 }
 
 .category-row .value {
-  font-size: 20px;        
+  font-size: 21px;        
   font-weight: 800;
   color: #ffffff;
 }}
+
+
+
+

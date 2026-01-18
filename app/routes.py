@@ -4,6 +4,15 @@ from flask import request
 import csv
 from datetime import datetime
 
+valid_rows = []
+invalid_rows = []
+error_counts = {}
+total_rows = 0
+valid_pct = 0
+status_counts = {}
+category_counts = {}
+total_amount = 0.0
+
 Headers = ['transaction_id', 'timestamp', 'amount', 'category', 'status']
 
 def valid_amount(value):
@@ -24,6 +33,17 @@ def valid_timestamp(time):
 @app.route("/", methods = ["GET", "POST"])
 def index():
     if request.method == "POST":
+
+        global valid_rows, invalid_rows, error_counts
+        global total_rows, valid_pct, status_counts, category_counts, total_amount
+
+        valid_rows = []
+        invalid_rows = []
+        error_counts = {}
+        status_counts = {}
+        category_counts = {}
+        total_amount = 0.0
+
         uploaded_csv = request.files.get("file")
 
         if uploaded_csv.filename == "":
@@ -60,10 +80,6 @@ def index():
 
         row_reader = csv.DictReader(raw_text.splitlines())
 
-        valid_rows = []
-        invalid_rows = []
-        error_counts = {}
-
         for row in row_reader:
             errors = []
 
@@ -99,9 +115,6 @@ def index():
 
         # Row Aggregation
 
-        status_counts = {}
-        category_counts = {}
-        total_amount = 0.0
 
         for row in valid_rows:
             total_amount += float(row["amount"])
@@ -128,6 +141,46 @@ def index():
             )
         
     return render_template("upload.html")
+
+@app.route("/dashboard")
+def overview():
+    return render_template(
+            "dashboard.html",
+            total_rows = total_rows,
+            valid_rows = len(valid_rows),
+            invalid_rows = len(invalid_rows),
+            valid_pct = valid_pct,
+            error_counts = error_counts,
+            total_amount = round(total_amount,2),
+            category_counts = category_counts,
+            status_counts = status_counts
+            )
+
+@app.route("/analytics")
+def analytics():
+    avg_amount = (
+        sum(float(r["amount"]) for r in valid_rows) / len(valid_rows)
+        if valid_rows else 0
+    )
+
+    amounts = sorted(float(r["amount"]) for r in valid_rows)
+
+    n = len(amounts)
+    if n == 0:
+        median_amount = 0
+    elif n % 2 == 1:
+        median_amount = amounts[n//2]
+    else:
+        median_amount = (amounts[n//2 - 1] + amounts[n//2]) / 2
+    
+    
+    return render_template("analytics.html")
+
+@app.route("/saved")
+def saved():
+    return render_template("saved.html")
+
+
 
 @app.route("/health")
 def health():
