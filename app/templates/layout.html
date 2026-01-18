@@ -19,12 +19,32 @@
         <aside class = "sidebar">
             
             <div class = "sidebar-top">
-                <h2 class = "logo">Opslens</h2>
-                <nav>
-                    <a href="/">Upload</a>
-                    <a href="/dashboard">Overview</a>
-                    <a href="/integrity">Integrity</a>
-                    <a href="Analytics">Analytics</a>
+                <div class="logo-wrap">
+                    <img
+                        src="{{ url_for('static', filename='images/opslens-logo.png') }}"
+                        alt="OpsLens logo"
+                        class="logo-img"
+                    />
+                    <h2 class="logo">OpsLens</h2>
+                </div>
+
+                <nav class = "sidebar-nav">
+                    <a href="/" class = "nav-item">
+                        <i class ="fa-solid fa-upload"></i>
+                        <span>Upload</span>
+                    </a>
+                    <a href="/dashboard" class = "nav-item">
+                        <i class ="fa-solid fa-house"></i>
+                        <span>Overview</span>
+                    </a>
+                    <a href="/analytics" class = "nav-item">
+                        <i class ="fa-solid fa-chart-line"></i>
+                        <span>Analytics</span>
+                    </a>
+                    <a href="/saved" class = "nav-item">
+                        <i class ="fa-solid fa-bookmark"></i>
+                        <span>Saved</span>
+                    </a>
                 </nav>
             </div>
 
