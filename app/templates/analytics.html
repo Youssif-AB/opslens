@@ -117,11 +117,40 @@
 
         <div class="card category-card">
             <div class="card-header">
-                <h3>Status by Categroy</h3>
+                <h3>Status by Category</h3>
             </div>
 
-            <div class="category-legend">
-                
+            <div class = "status-table-wrap">
+                <table class = "status-table">
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th class = "Completed">Completed</th>
+                            <th class = "Pending">Pending</th>
+                            <th class = "Error">Error</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                    {% for cat, values in status_by_category.items() %}
+                    <tr>
+                        <td class="category">{{ cat }}</td>
+
+                        <td class="cell completed">
+                        {{ values["Completed"] }}
+                        </td>
+
+                        <td class="cell pending">
+                        {{ values["Pending"] }}
+                        </td>
+
+                        <td class="cell error">
+                        {{ values["Error"] }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -131,6 +160,32 @@
                 <h3>Data Shape Summary</h3>
             </div>
 
+            <div class = "data-shape">
+                <div class = "row">
+                    <span>Min Amount</span>
+                    <span>${{ "%.2f"|format(min_amount) }}</span>
+                </div>
+
+                <div class = "row">
+                    <span>Max Amount</span>
+                    <span>${{ "%.2f"|format(max_amount) }}</span>
+                </div>
+
+                <div class = "row">
+                    <span>Amount Range</span>
+                    <span>${{ "%.2f"|format(amount_range) }}</span>
+                </div>
+
+                <div class = "row">
+                    <span>Unique Categories</span>
+                    <span>{{ unique_categories }}</span>
+                </div>
+
+                <div class = "row">
+                    <span>Unique Statuses</span>
+                    <span>{{ unique_statuses }}</span>
+                </div>
+            </div>
             
         </div>
 
@@ -300,24 +355,69 @@ new Chart(statusCtx, {
 
 </script>
 
+
 <script>
-const catCtx = document.getElementById('categoryDonut');
+    const catAmountCtx = document.getElementById('categoryAmountBar')
 
-new Chart(catCtx, {
-  type: 'doughnut',
-
+    new Chart(catAmountCtx, {
+  type: 'bar',
+  data: {
+    labels: {{ category_amounts.keys() | list | tojson }},
+    datasets: [{
+      data: {{ category_amounts.values() | list | tojson }},
+      backgroundColor: [
+        '#22c55e',
+        '#3b82f6',
+        '#a855f7',
+        '#ef4444',
+        '#f97316'
+      ],
+      borderRadius: 10,
+      barThickness: 18
+    }]
   },
   options: {
+    indexAxis: 'y',
     responsive: true,
     maintainAspectRatio: false,
-    cutout: '70%',
+    clip: false,
+    layout: {
+      padding: { right: 110 }
+    },
     plugins: {
       legend: { display: false },
-      datalabels: { display: false }
+      datalabels: {
+        clip: false,
+        anchor: 'end',
+        align: 'right',
+        offset: 8,
+        color: '#e5e7eb',
+        font: {
+          weight: '700',
+          size: 15
+        },
+        formatter: v => `$${v.toLocaleString()}`
+      }
+    },
+    scales: {
+      x: {
+        ticks: { display: false },
+        grid: { display: false },
+        border: { display: false }
+      },
+      y: {
+        ticks: { color: '#e5e7eb', 
+                    font: {
+            size: 13,        
+            weight: '300'   
+            }
+        },
+        grid: { display: false },
+        border: { display: false }
+      }
     }
   },
-  plugins: [centerTextPlugin]
+  plugins: [ChartDataLabels]   // ← THIS IS NON-OPTIONAL
 });
 </script>
-
 {% endblock %}
