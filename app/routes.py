@@ -241,14 +241,23 @@ def analytics():
         cat = r["category"]
         category_amounts[cat] = category_amounts.get(cat, 0) + float(r["amount"])
 
-    status_category = {}
+    status_by_category = {}
 
     for r in valid_rows:
         cat = r["category"]
-        status = r["status"]
+        status = r["status"].strip().capitalize()
 
-        status_category.setdefault(cat, {})
-        status_category[cat][status] = status_category.get(status, 0) + 1
+        if cat not in status_by_category:
+            status_by_category[cat] = {
+                "Completed": 0,
+                "Pending": 0,
+                "Error": 0
+            }
+
+        # guard in case status is unexpected
+        if status in status_by_category[cat]:
+            status_by_category[cat][status] += 1
+
 
     
     min_amount = min(amounts) if amounts else 0
@@ -268,7 +277,7 @@ def analytics():
         daily_counts=counts,
         buckets=buckets,
         category_amounts=category_amounts,
-        status_category=status_category,
+        status_by_category=status_by_category,
         min_amount=min_amount,
         max_amount=max_amount,
         amount_range=amount_range,
