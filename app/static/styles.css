@@ -140,7 +140,7 @@ body {
   min-width: 0;
   height: 100%;
   overflow: hidden;
-  padding: 10px 22px;     /* move everything up */
+  padding: 15px 22px;     /* move everything up */
 }
 
 /* Title spacing */
@@ -161,6 +161,18 @@ h1, h2 {
   grid-template-columns: 1fr;
   gap: 12px;
   margin: 10px 0;
+}
+
+.grid-mid-analytics {
+  display: grid;
+  grid-template-columns: 1.75fr 1fr;
+  gap: 12px;
+  margin: 10px 0;
+  align-items: start;
+}
+
+.grid-mid-analytics > .card {
+  height: 360px;
 }
 
 .grid-bottom {
@@ -189,6 +201,8 @@ h1, h2 {
   font-size: 1.1rem;
   font-weight: 500;
   color: #cbd5e1;
+  margin-bottom: 14px;
+
 }
 
 .card-body {
@@ -206,6 +220,18 @@ h1, h2 {
 
 /* list items inside cards */
 .card-body li { color: #000000; }
+
+.card-body.chart-body {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  padding-top: 6px;
+}
+
+.card.chart-card {
+  padding-bottom: 8px;
+}
+
 
 /* ================================
    ICONS
@@ -307,18 +333,21 @@ h1, h2 {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between; /* donut left, stats right */
-  gap: 24px;           
+  justify-content: flex-start; /* donut left, stats right */
+  gap: 30px;           
 }
 
 .donut-chart {
-  width: 320px;
-  height: 320px;        
+  width: 290px;
+  height: 290px;        
   position: relative;
 }
 
 .donut-stats {
-  margin-left: auto;
+  margin-left: 3px;          /* pull legend closer to donut */
+  display: flex;
+  flex-direction: column;
+  gap: 25px;                  /* <-- THIS spreads the points */
 }
 
 #statusDonut {
@@ -337,6 +366,7 @@ h1, h2 {
 }
 
 .stat .dot {
+  margin-top: 7px;
   width: 12px;
   height: 12px;
   border-radius: 50%;
@@ -344,10 +374,12 @@ h1, h2 {
 
 .stat.green .dot { background: #22c55e; }
 .stat.red .dot { background: #ef4444; }
+.stat.blue .dot {background: #3b82f6;}
+.stat.orange .dot {background: orange;}
 
 .stat .value {
-  font-size: 28px;        
-  font-weight: 800;
+  font-size: 24px;        
+  font-weight: 750;
   color: #ffffff;
 }
 
@@ -442,6 +474,21 @@ h1, h2 {
   color: #ffffff;
 }}
 
+.line-chart-wrap {
+  height: 260px;
+  width: 100%;
+  position: relative;
+}
 
 
+#line-chart-wrap,
+canvas {
+  cursor: grab;
+}
 
+
+.category-bars {
+  height: 220px;
+  width: 100%;
+  padding-top: 6px;
+}

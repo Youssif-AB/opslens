@@ -184,12 +184,10 @@ def analytics():
     
     std_dev_amount = math.sqrt(variance)
 
-    error_rate = (
-        (len(invalid_rows) / total_rows) * 100
-        if total_rows > 0 else 0
-    )  
+    cof_var = (std_dev_amount/avg_amount) * 100 if avg_amount != 0 else 0
 
     daily_counts = defaultdict(int)
+
 
     for row in valid_rows + [r["row"] for r in invalid_rows]:
         ts = row.get("timestamp")
@@ -198,6 +196,26 @@ def analytics():
             daily_counts[str(date)] += 1
         except:
             continue
+
+    sorted_days = sorted(daily_counts.items())
+
+    if not sorted_days:
+        dates = []
+        counts = []
+    else:
+        MAX_POINTS = len(sorted_days)
+        if len(sorted_days) > MAX_POINTS:
+            step = max(1, len(sorted_days) // MAX_POINTS)
+            sampled = sorted_days[::step]
+        else:
+            sampled = sorted_days
+
+        dates = [
+            datetime.strptime(d, "%Y-%m-%d").strftime("%b %d")
+            for d, _ in sampled
+        ]
+        counts = [c for _, c in sampled]
+
 
     buckets = {
         "<10":0,
@@ -245,8 +263,9 @@ def analytics():
         avg_amount=round(avg_amount, 2),
         median_amount=round(median_amount, 2),
         std_dev_amount=round(std_dev_amount, 2),
-        error_rate=round(error_rate, 2),
-        daily_counts=daily_counts,
+        cof_var=round(cof_var, 2),
+        dates= dates,
+        daily_counts=counts,
         buckets=buckets,
         category_amounts=category_amounts,
         status_category=status_category,
