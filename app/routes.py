@@ -3,6 +3,8 @@ from flask import render_template
 from flask import request
 import csv
 from datetime import datetime
+import math
+from collections import defaultdict
 
 valid_rows = []
 invalid_rows = []
@@ -173,8 +175,87 @@ def analytics():
     else:
         median_amount = (amounts[n//2 - 1] + amounts[n//2]) / 2
     
+    mean = avg_amount
+
+    variance = (
+        sum((float(r["amount"]) - mean) ** 2 for r in valid_rows) / len(valid_rows)
+        if valid_rows else 0
+        )
     
-    return render_template("analytics.html")
+    std_dev_amount = math.sqrt(variance)
+
+    error_rate = (
+        (len(invalid_rows) / total_rows) * 100
+        if total_rows > 0 else 0
+    )  
+
+    daily_counts = defaultdict(int)
+
+    for row in valid_rows + [r["row"] for r in invalid_rows]:
+        ts = row.get("timestamp")
+        try:
+            date = datetime.fromisoformat(ts.replace(" ", "T")).date()
+            daily_counts[str(date)] += 1
+        except:
+            continue
+
+    buckets = {
+        "<10":0,
+        "10-50":0,
+        "50-200":0,
+        "200+":0
+    }
+
+    for r in valid_rows:
+        amt = float(r["amount"])
+        if amt < 10:
+            buckets["<10"] += 1
+        elif amt < 50:
+            buckets["10-50"] +=1
+        elif amt < 200:
+            buckets["50-200"] += 1
+        else:
+            buckets["200+"] +=1
+
+    category_amounts = {}
+
+    for r in valid_rows:
+        cat = r["category"]
+        category_amounts[cat] = category_amounts.get(cat, 0) + float(r["amount"])
+
+    status_category = {}
+
+    for r in valid_rows:
+        cat = r["category"]
+        status = r["status"]
+
+        status_category.setdefault(cat, {})
+        status_category[cat][status] = status_category.get(status, 0) + 1
+
+    
+    min_amount = min(amounts) if amounts else 0
+    max_amount = max(amounts) if amounts else 0
+    amount_range = max_amount - min_amount
+
+    unique_categories = len(set(r["category"] for r in valid_rows))
+    unique_statuses = len(set(r["status"] for r in valid_rows))
+
+    return render_template(
+        "analytics.html",
+        avg_amount=round(avg_amount, 2),
+        median_amount=round(median_amount, 2),
+        std_dev_amount=round(std_dev_amount, 2),
+        error_rate=round(error_rate, 2),
+        daily_counts=daily_counts,
+        buckets=buckets,
+        category_amounts=category_amounts,
+        status_category=status_category,
+        min_amount=min_amount,
+        max_amount=max_amount,
+        amount_range=amount_range,
+        unique_categories=unique_categories,
+        unique_statuses=unique_statuses
+)
 
 @app.route("/saved")
 def saved():
