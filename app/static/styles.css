@@ -134,6 +134,12 @@ body {
   margin-top: 10px;
 }
 
+.switch-signin {
+  font-size: 18px;
+  color: #ffffff;
+  margin-top: 10px;
+}
+
 
 .content {
   flex: 1;
@@ -573,4 +579,208 @@ canvas {
   font-size: 20px;
   font-weight: 700;
   color: #ffffff;
+}
+
+/* upload page css */
+
+.upload-page {
+  background-color: #0f1117;
+  color: #e5e7eb;
+  min-height: 100vh;
+  font-family: system-ui, sans-serif;
+}
+
+.upload-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 32px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 20px;
+}
+
+.logo img {
+  width: 32px;
+  height: 32px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.header-actions .signin {
+  color: #a5b4fc;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.upload-main {
+  max-width: 700px;
+  margin: 80px auto 0;
+  text-align: center;
+  padding: 0 20px;
+}
+
+.upload-main h1 {
+  font-size: 42px;
+  margin-bottom: 14px;
+}
+
+.subtitle {
+  color: #9ca3af;
+  font-size: 18px;
+  margin-bottom: 40px;
+}
+
+.upload-box {
+  border: 2px dashed #3b82f6;
+  border-radius: 14px;
+  padding: 50px 30px;
+  background: rgba(59, 130, 246, 0.05)
+}
+
+.drop-area span{
+  color: #9ca3af;
+  display: block;
+  margin-bottom: 16px;
+}
+
+.file-btn {
+  display: inline-block;
+  padding: 10px 20px;
+  background: #3b82f6;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* authentication */
+
+.auth-page {
+  height: 100vh;
+  background: #1f2430;
+  color: #e5e7eb;
+  font-family: system-ui, sans-serif;
+}
+
+.auth-header {
+  padding: 20px 32px;
+}
+
+.auth-header logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 18;
+}
+
+.auth-header img {
+  width: 28px;
+  height: 28px;
+}
+
+/* Center container */
+.auth-container {
+  height: calc(100vh - 80px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+/* Card */
+.auth-card {
+  width: 360px;
+  background: #282a34;
+  padding: 28px;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+.auth-card h1 {
+  margin: 0 0 6px;
+  font-size: 26px;
+}
+
+.auth-subtext {
+  margin-bottom: 22px;
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.auth-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-card input {
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  background: #1f2430;
+  color: white;
+  font-size: 14px;
+}
+
+.auth-card input:focus {
+  outline: 2px solid #3b82f6;
+}
+
+.auth-card button {
+  margin-top: 6px;
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  background: #3b82f6;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-card button:hover {
+  background: #2563eb;
+}
+
+/* Footer */
+.auth-footer {
+  margin-top: 18px;
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.auth-footer a {
+  color: #60a5fa;
+  text-decoration: none;
+  margin-left: 4px;
+}
+
+.auth-footer a:hover {
+  text-decoration: underline;
+}
+
+.saved-link {
+  margin-top: 14px;
+  text-align: center;
+}
+
+.saved-link a {
+  font-size: 13px;
+  color: #94a3b8;
+  text-decoration: none;
+}
+
+.saved-link a:hover {
+  color: #e5e7eb;
+  text-decoration: underline;
 }

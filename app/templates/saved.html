@@ -1,5 +1,18 @@
 {% extends "layout.html" %}
 
 {% block content %}
+<h2>Saved Datasets</h2>
+
+{% if datasets %}
+    <ul>
+    {% for d in datasets %}
+        <li>
+            {{ d["filename"] }} — {{ d["uploaded_at"] }}
+        </li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No saved datasets yet.</p>
+{% endif %}
 
 {% endblock %}

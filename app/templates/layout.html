@@ -50,12 +50,16 @@
                 </nav>
             </div>
 
-            <div class = "sidebar-bottom">
-                <div class = "account-info">
-                    <div class = "avatar">YL</div>
-                    <div class = "name">Local User</div>
-                </div>
-                <div class = "switch">Sign Out</div>
+            <div class="sidebar-bottom">
+                {% if current_user %}
+                    <div class="account-info">
+                    <div class="avatar">{{ current_user.avatar }}</div>
+                    <div class="name">{{ current_user.name }}</div>
+                    </div>
+                    <a href="/logout" class="switch">Sign Out</a>
+                {% else %}
+                    <a href="/login" class="switch-signin">Sign In</a>
+                {% endif %}
             </div>
         </aside>
 

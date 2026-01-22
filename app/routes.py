@@ -5,6 +5,11 @@ import csv
 from datetime import datetime
 import math
 from collections import defaultdict
+from app.db import get_db
+from flask import session
+from flask import redirect
+
+
 
 valid_rows = []
 invalid_rows = []
@@ -128,6 +133,16 @@ def index():
         for row in valid_rows:
             status = row["status"]
             status_counts[status] = status_counts.get(status, 0) + 1
+
+        if "user_id" in session:
+            conn = get_db()
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO datasets (user_id, filename) VALUES (?, ?)",
+                (session["user_id"], uploaded_csv.filename)
+            )
+            conn.commit()
+            conn.close()
 
 
         return render_template(
@@ -285,13 +300,123 @@ def analytics():
         unique_statuses=unique_statuses
 )
 
+from flask import redirect, url_for
+
 @app.route("/saved")
 def saved():
-    return render_template("saved.html")
+    if "user_id" not in session:
+        session["next"] = "/saved"
+        return redirect("/login")
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT filename, uploaded_at
+        FROM datasets
+        WHERE user_id = ?
+        ORDER BY uploaded_at DESC
+        """,
+        (session["user_id"],)
+    )
+
+    datasets = cur.fetchall()
+    conn.close()
+
+    return render_template("saved.html", datasets=datasets)
 
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        email = request.form["email"]
+
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT id from users where email = ?", (email, ))
+        user = cur.fetchone()
+        conn.close()
+
+        if user:
+            session["user_id"] = user["id"]
+            
+            next_page = session.pop("next", "/")
+            return redirect(next_page)
+        
+    return render_template("login.html")
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        email = request.form["email"]
+        password = request.form["password"]
+
+        conn = get_db()
+        cur = conn.cursor()
+
+        # check if user already exists
+        cur.execute(
+            "SELECT id FROM users WHERE email = ?",
+            (email,)
+        )
+        existing = cur.fetchone()
+
+        if existing:
+            conn.close()
+            return render_template(
+                "register.html",
+                error="Email already registered"
+            )
+
+        # create user (plain-text password, as requested)
+        cur.execute(
+            "INSERT INTO users (email, password_hash) VALUES (?, ?)",
+            (email, password)
+        )
+        conn.commit()
+
+        # log them in immediately
+        user_id = cur.lastrowid
+        conn.close()
+
+        session["user_id"] = user_id
+
+        next_page = session.pop("next", "/")
+        return redirect(next_page)
+
+    return render_template("register.html")
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect("/")
 
 @app.route("/health")
 def health():
     return "OK"
 
+@app.context_processor
+def inject_user():
+    user = None
+
+    if "user_id" in session:
+        conn = get_db()
+        cur = conn.cursor()
+
+        cur.execute(
+            "SELECT email FROM users WHERE id = ?",
+            (session["user_id"],)
+        )
+        row = cur.fetchone()
+        conn.close()
+
+        if row:
+            email = row["email"]
+            user = {
+                "email": email,
+                "name": email[:4],
+                "avatar": email[:2].upper()
+            }
+
+    return dict(current_user=user)
