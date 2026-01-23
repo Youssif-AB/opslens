@@ -341,7 +341,7 @@ def login():
         if user:
             session["user_id"] = user["id"]
             
-            next_page = session.pop("next", "/")
+            next_page = request.args.get("next") or session.pop("next", "/")
             return redirect(next_page)
         
     return render_template("login.html")

@@ -17,12 +17,12 @@
       <div class = "header-actions">
         <span class = "lang">EN</span>
           {% if current_user %}
-          <div class="user-brief">
+          <div class="account-info">
             <div class="avatar">{{ current_user.avatar }}</div>
-            <div class="user-name">{{ current_user.name }}</div>
+            <div class="name">{{ current_user.name }}</div>
           </div>
           {% else %}
-            <a href="/login" class="sign-in-btn">Sign In</a>
+            <a href="/login?next=/" class="sign-in-btn">Sign In</a>
           {% endif %}
       </div>
     </header>
@@ -50,7 +50,7 @@
       </form>
           {% if current_user %}
             <div class="saved-link">
-              <a href="/saved">View saved datasets</a>
+              <a href="/saved">View Saved Datasets</a>
             </div>
           {% endif %}
 
