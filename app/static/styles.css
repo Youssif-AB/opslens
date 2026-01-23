@@ -783,3 +783,111 @@ canvas {
   color: #e5e7eb;
   text-decoration: underline;
 }
+
+/* saved page */
+
+.page-title {
+  font-size: 28px;
+  margin-bottom: 24px;
+  font-weight: 600;
+}
+
+.saved-layout {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+}
+
+.dataset-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dataset-card {
+  background: #1f2430;
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.2s ease;
+}
+
+.dataset-card:hover {
+  background: #262c3a;
+}
+
+.dataset-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dataset-name {
+  font-weight: 500;
+  font-size: 15px;
+}
+
+.dataset-date {
+  font-size: 12px;
+  color: #9aa4b2;
+}
+
+.dataset-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn-open {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn-open:hover {
+  background: #2563eb;
+}
+
+.btn-delete {
+  background: transparent;
+  color: #ef4444;
+  border: 1px solid #ef4444;
+}
+
+.btn-delete:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.upload-panel {
+  width: 260px;
+  background: #1f2430;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.upload-panel form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.btn-upload {
+  background: #10b981;
+  color: white;
+}
+
+.btn-upload:hover {
+  background: #059669;
+}

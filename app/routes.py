@@ -41,16 +41,6 @@ def valid_timestamp(time):
 def index():
     if request.method == "POST":
 
-        global valid_rows, invalid_rows, error_counts
-        global total_rows, valid_pct, status_counts, category_counts, total_amount
-
-        valid_rows = []
-        invalid_rows = []
-        error_counts = {}
-        status_counts = {}
-        category_counts = {}
-        total_amount = 0.0
-
         uploaded_csv = request.files.get("file")
 
         if uploaded_csv.filename == "":
@@ -58,10 +48,6 @@ def index():
         
         if not uploaded_csv.filename.lower().endswith(".csv"):
             return "Invalid file type. Please upload a CSV file."
-
-
-        ## Header Validation
-        uploaded_csv.seek(0)
 
         raw_text = uploaded_csv.read().decode("utf-8", errors="replace")
         reader = csv.reader(raw_text.splitlines())
@@ -81,65 +67,17 @@ def index():
                 "</pre>"
             )
         
-        ## Row Validation
-
-        uploaded_csv.seek(0)
-
-        row_reader = csv.DictReader(raw_text.splitlines())
-
-        for row in row_reader:
-            errors = []
-
-            #required fields
-            for field in Headers:
-                if not row.get(field):
-                    errors.append(f"Missing {field}")
-
-            if row.get("amount") and not valid_amount(row["amount"]):
-                errors.append("Invalid Amount")
-
-            if row.get("timestamp") and not valid_timestamp(row["timestamp"]):
-                errors.append("Invalid Timestamp")
-
-            if errors:
-                invalid_rows.append({
-                    "row": row,
-                    "errors": errors
-                })
-
-                for err in errors:
-                    error_counts[err] = error_counts.get(err, 0) + 1
-                
-
-            else:
-                valid_rows.append(row)
-
-        total_rows = len(valid_rows) + len(invalid_rows)
-
-        valid_pct = (
-            round((len(valid_rows)/total_rows) * 100, 2) if total_rows > 0 else 0
-        )
-
-        # Row Aggregation
-
-
-        for row in valid_rows:
-            total_amount += float(row["amount"])
-
-        for row in valid_rows:
-            category = row["category"]
-            category_counts[category] = category_counts.get(category, 0) + 1
-
-        for row in valid_rows:
-            status = row["status"]
-            status_counts[status] = status_counts.get(status, 0) + 1
+        process_csv(raw_text)
 
         if "user_id" in session:
             conn = get_db()
             cur = conn.cursor()
+            uploaded_csv.seek(0)
+            raw_text = uploaded_csv.read().decode("utf-8", errors="replace")
+
             cur.execute(
-                "INSERT INTO datasets (user_id, filename) VALUES (?, ?)",
-                (session["user_id"], uploaded_csv.filename)
+                "INSERT INTO datasets (user_id, filename, raw_csv) VALUES (?, ?, ?)",
+                (session["user_id"], uploaded_csv.filename, raw_text)
             )
             conn.commit()
             conn.close()
@@ -313,7 +251,7 @@ def saved():
 
     cur.execute(
         """
-        SELECT filename, uploaded_at
+        SELECT id, filename, uploaded_at
         FROM datasets
         WHERE user_id = ?
         ORDER BY uploaded_at DESC
@@ -392,9 +330,79 @@ def logout():
     session.clear()
     return redirect("/")
 
-@app.route("/health")
-def health():
-    return "OK"
+@app.route("/saved/upload", methods=["POST"])
+def uploaded_saved():
+    if "user_id" not in session:
+        session["next"] = "/saved"
+        return redirect("/login")
+
+    file = request.files.get("file")
+    if not file or file.filename == "":
+        return redirect("/saved")
+
+    raw_text = file.read().decode("utf-8", errors="replace")
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO datasets (user_id, filename, raw_csv) VALUES (?, ?, ?)",
+        (session["user_id"], file.filename, raw_text)
+    )
+    conn.commit()
+    conn.close()
+
+    process_csv(raw_text)
+    return redirect("/dashboard")
+
+@app.route("/delete/<int:dataset_id>")
+def delete_dataset(dataset_id):
+    if "user_id" not in session:
+        return redirect("/login")
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        DELETE FROM datasets
+        WHERE id = ? AND user_id = ?
+        """,
+        (dataset_id, session["user_id"])
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect("/saved")
+
+@app.route("/open/<int:dataset_id>")
+def open_dataset(dataset_id):
+    if "user_id" not in session:
+        session["next"] = f"/open/{dataset_id}"
+        return redirect("/login")
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT raw_csv
+        FROM datasets
+        WHERE id = ? AND user_id = ?
+        """,
+        (dataset_id, session["user_id"])
+    )
+
+    row = cur.fetchone()
+    conn.close()
+
+    if not row:
+        return "Dataset not found", 404
+
+    raw_text = row["raw_csv"]
+    process_csv(raw_text)
+
+    return redirect("/dashboard")
 
 @app.context_processor
 def inject_user():
@@ -420,3 +428,44 @@ def inject_user():
             }
 
     return dict(current_user=user)
+
+def process_csv(raw_text):
+    global valid_rows, invalid_rows, error_counts
+    global total_rows, valid_pct, status_counts, category_counts, total_amount
+
+    valid_rows = []
+    invalid_rows = []
+    error_counts = {}
+    status_counts = {}
+    category_counts = {}
+    total_amount = 0.0
+
+    reader = csv.DictReader(raw_text.splitlines())
+
+    for row in reader:
+        errors = []
+
+        for field in Headers:
+            if not row.get(field):
+                errors.append(f"Missing {field}")
+
+        if row.get("amount") and not valid_amount(row["amount"]):
+            errors.append("Invalid Amount")
+
+        if row.get("timestamp") and not valid_timestamp(row["timestamp"]):
+            errors.append("Invalid Timestamp")
+
+        if errors:
+            invalid_rows.append({"row": row, "errors": errors})
+            for err in errors:
+                error_counts[err] = error_counts.get(err, 0) + 1
+        else:
+            valid_rows.append(row)
+
+    total_rows = len(valid_rows) + len(invalid_rows)
+    valid_pct = round((len(valid_rows) / total_rows) * 100, 2) if total_rows else 0
+
+    for row in valid_rows:
+        total_amount += float(row["amount"])
+        category_counts[row["category"]] = category_counts.get(row["category"], 0) + 1
+        status_counts[row["status"]] = status_counts.get(row["status"], 0) + 1

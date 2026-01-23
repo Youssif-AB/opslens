@@ -27,8 +27,10 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
         filename TEXT NOT NULL,
+        raw_csv TEXT NOT NULL,
         uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(user_id) REFERENCES users(id)
+        
     )
     """)
 
