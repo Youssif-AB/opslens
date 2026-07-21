@@ -64,15 +64,28 @@ def persist_report(connection, job, report, rejected_sample_limit=25, fail_after
             ),
         )
         dataset_id = cursor.lastrowid
+        connection.execute("DROP TABLE IF EXISTS temp.staged_transactions")
+        connection.execute(
+            """
+            CREATE TEMP TABLE staged_transactions (
+                transaction_id TEXT NOT NULL,
+                occurred_at TEXT NOT NULL,
+                amount REAL NOT NULL,
+                category TEXT NOT NULL,
+                status TEXT NOT NULL,
+                source_row INTEGER NOT NULL
+            )
+            """
+        )
         connection.executemany(
             """
-            INSERT INTO transactions(
-                dataset_id, transaction_id, occurred_at, amount, category, status, source_row
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO staged_transactions(
+                transaction_id, occurred_at, amount, category, status, source_row
+            ) VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
                 (
-                    dataset_id, row["transaction_id"], row["timestamp"], row["amount"],
+                    row["transaction_id"], row["timestamp"], row["amount"],
                     row["category"], row["status"], row["source_row"],
                 )
                 for row in report.accepted
@@ -80,6 +93,15 @@ def persist_report(connection, job, report, rejected_sample_limit=25, fail_after
         )
         if fail_after_stage:
             raise RuntimeError("Injected failure after staging rows")
+        connection.execute(
+            """
+            INSERT INTO transactions(dataset_id, transaction_id, occurred_at, amount, category, status, source_row)
+            SELECT ?, transaction_id, occurred_at, amount, category, status, source_row
+            FROM staged_transactions
+            """,
+            (dataset_id,),
+        )
+        connection.execute("DROP TABLE staged_transactions")
         connection.executemany(
             "INSERT INTO validation_results(job_id, rule, field, failure_count) VALUES (?, ?, ?, ?)",
             ((job["id"], rule, field, count) for (rule, field), count in report.failures.items()),
