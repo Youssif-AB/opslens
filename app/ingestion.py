@@ -24,6 +24,20 @@ def enqueue_job(connection, filename, raw_bytes, user_id=None):
         raise FileValidationError("CSV file is empty")
     digest = content_hash(raw_bytes)
     with transaction(connection, immediate=True):
+        existing = connection.execute(
+            """
+            SELECT j.id
+            FROM ingestion_jobs j
+            LEFT JOIN datasets d ON d.id = j.dataset_id
+            WHERE j.user_id IS ? AND j.content_hash = ?
+              AND (j.status IN ('queued', 'processing') OR d.status = 'completed')
+            ORDER BY j.id DESC LIMIT 1
+            """,
+            (user_id, digest),
+        ).fetchone()
+        if existing:
+            logger.info("ingestion_duplicate existing_job_id=%s filename=%s", existing["id"], safe_name)
+            return existing["id"], True
         cursor = connection.execute(
             """
             INSERT INTO ingestion_jobs(user_id, filename, content_hash, schema_version, raw_csv)
