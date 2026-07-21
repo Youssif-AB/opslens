@@ -1,5 +1,4 @@
-from app import app
-from flask import render_template
+from flask import Blueprint, render_template
 from flask import request
 import csv
 from datetime import datetime
@@ -8,8 +7,9 @@ from collections import defaultdict
 from app.db import get_db
 from flask import session
 from flask import redirect
-
-
+bp = Blueprint("main", __name__)
+# Keep the existing decorator layout while the routes are split into services.
+app = bp
 
 valid_rows = []
 invalid_rows = []

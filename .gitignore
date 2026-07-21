@@ -1,12 +1,20 @@
 # virtual environment
 venv/
+.venv*/
 
 # python cache
 __pycache__/
 *.pyc
+.pytest_cache/
+.coverage
 
 # environment variables
 .env
+
+# local runtime data
+data/*.db-shm
+data/*.db-wal
+instance/
 
 # OS junk
 .DS_Store
