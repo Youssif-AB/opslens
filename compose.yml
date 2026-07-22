@@ -1,0 +1,30 @@
+services:
+  web:
+    build: .
+    environment:
+      OPSLENS_DATABASE: /data/opslens.db
+      OPSLENS_SECRET_KEY: ${OPSLENS_SECRET_KEY:-local-development-secret}
+    ports:
+      - "8000:8000"
+    volumes:
+      - opslens-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/ready')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  worker:
+    build: .
+    command: ["python", "-m", "app.worker"]
+    environment:
+      OPSLENS_DATABASE: /data/opslens.db
+      OPSLENS_SECRET_KEY: ${OPSLENS_SECRET_KEY:-local-development-secret}
+    volumes:
+      - opslens-data:/data
+    depends_on:
+      web:
+        condition: service_healthy
+
+volumes:
+  opslens-data:
