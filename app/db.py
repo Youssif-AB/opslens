@@ -117,6 +117,13 @@ MIGRATIONS = [
     CREATE INDEX IF NOT EXISTS idx_jobs_user_queued ON ingestion_jobs(user_id, queued_at DESC, id DESC);
     CREATE INDEX IF NOT EXISTS idx_transactions_dataset_time ON transactions(dataset_id, occurred_at);
     CREATE INDEX IF NOT EXISTS idx_transactions_dataset_category ON transactions(dataset_id, category);
+    """,
+    """
+    DROP INDEX IF EXISTS idx_transactions_dataset_category;
+    CREATE INDEX IF NOT EXISTS idx_transactions_dataset_category_time
+        ON transactions(dataset_id, category, occurred_at);
+    CREATE INDEX IF NOT EXISTS idx_transactions_dataset_status
+        ON transactions(dataset_id, status);
     """
 ]
 
