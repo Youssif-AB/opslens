@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+{% block content %}
+<h1>Ingestion job #{{ report.job.id }}</h1>
+{% if duplicate %}<p class="notice">This file already has an active or completed ingestion. Showing the existing result.</p>{% endif %}
+<section class="card job-card">
+  <h2>Status: <span id="job-status">{{ report.job.status }}</span></h2>
+  <p>{{ report.job.filename }} · schema {{ report.job.schema_version }}</p>
+  {% if report.job.status == 'failed' %}<p class="error-message">{{ report.job.error_message }}</p>{% endif %}
+  {% if report.job.status == 'completed' %}
+  <div class="quality-grid">
+    <div><strong>{{ report.job.total_rows }}</strong><span>Total</span></div><div><strong>{{ report.job.accepted_rows }}</strong><span>Accepted</span></div>
+    <div><strong>{{ report.job.rejected_rows }}</strong><span>Rejected</span></div><div><strong>{{ report.job.duplicate_rows }}</strong><span>Duplicates</span></div>
+  </div>
+  <h3>Validation failures</h3><ul>{% for failure in report.failures %}<li>{{ failure.rule }}{% if failure.field %} ({{ failure.field }}){% endif %}: {{ failure.failure_count }}</li>{% else %}<li>No validation failures</li>{% endfor %}</ul>
+  {% if report.rejected_sample %}<h3>Rejected row sample</h3><table class="quality-table"><tr><th>Row</th><th>Reasons</th></tr>{% for row in report.rejected_sample %}<tr><td>{{ row.row_number }}</td><td>{{ row.reasons }}</td></tr>{% endfor %}</table>{% endif %}
+  <a class="btn btn-open" href="{{ url_for('main.overview', dataset_id=report.job.dataset_id) }}">Open report</a>
+  {% else %}<p>The worker will process this upload in the background.</p>{% endif %}
+</section>
+{% if report.job.status in ('queued', 'processing') %}<script>
+setTimeout(async function poll(){const response=await fetch("{{ url_for('main.job_status_api', job_id=report.job.id) }}");const job=await response.json();document.getElementById("job-status").textContent=job.status;if(job.status==="completed"||job.status==="failed")location.reload();else setTimeout(poll,1000);},1000);
+</script>{% endif %}
+{% endblock %}

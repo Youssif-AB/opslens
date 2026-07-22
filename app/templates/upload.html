@@ -33,6 +33,7 @@
       <p class = "subtitle">
         Upload your CSV file and we will automatically analyze, validate, and visualize your data"
       </p>
+      {% if error %}<p class="error-message">{{ error }}</p>{% endif %}
 
       <form
         class = "upload-box"

@@ -11,15 +11,21 @@
         <div class="dataset-info">
           <div class="dataset-name">{{ d.filename }}</div>
           <div class="dataset-date">{{ d.uploaded_at }}</div>
+          <div class="dataset-date">{{ d.accepted_rows }} accepted · {{ d.rejected_rows }} rejected</div>
         </div>
 
         <div class="dataset-actions">
           <a href="/open/{{ d.id }}" class="btn btn-open">Open</a>
-          <a href="/delete/{{ d.id }}" class="btn btn-delete">Delete</a>
+          <form method="post" action="/delete/{{ d.id }}"><button class="btn btn-delete" type="submit">Delete</button></form>
         </div>
       </div>
     {% endfor %}
   </div>
+
+  <nav class="pagination">
+    {% if page > 1 %}<a class="btn" href="{{ url_for('main.saved', page=page-1) }}">Previous</a>{% endif %}
+    {% if has_next %}<a class="btn" href="{{ url_for('main.saved', page=page+1) }}">Next</a>{% endif %}
+  </nav>
 
   <div class="upload-panel">
     <form method="POST" action="/saved/upload" enctype="multipart/form-data">

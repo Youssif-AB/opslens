@@ -1,471 +1,223 @@
-from flask import Blueprint, render_template
-from flask import request
-import csv
-from datetime import datetime
 import math
 from collections import defaultdict
-from app.db import get_db
-from flask import session
-from flask import redirect
+
+from flask import Blueprint, abort, jsonify, redirect, render_template, request, session, url_for
+from werkzeug.security import check_password_hash, generate_password_hash
+
+from app.db import get_db, transaction
+from app.ingestion import enqueue_job, quality_report
+from app.schema import FileValidationError
+
 bp = Blueprint("main", __name__)
-# Keep the existing decorator layout while the routes are split into services.
-app = bp
-
-valid_rows = []
-invalid_rows = []
-error_counts = {}
-total_rows = 0
-valid_pct = 0
-status_counts = {}
-category_counts = {}
-total_amount = 0.0
-
-Headers = ['transaction_id', 'timestamp', 'amount', 'category', 'status']
-
-def valid_amount(value):
-    try:
-        float(value)
-        return True        
-    except:
-        return False
-        
-def valid_timestamp(time):
-    try:
-        datetime.fromisoformat(time.replace(" ", "T"))
-        return True
-    except:
-        return False
 
 
-@app.route("/", methods = ["GET", "POST"])
+def current_user_id():
+    return session.get("user_id")
+
+
+def accessible_job(job_id):
+    job = get_db().execute("SELECT * FROM ingestion_jobs WHERE id = ? AND user_id IS ?", (job_id, current_user_id())).fetchone()
+    if not job or (current_user_id() is None and session.get("last_job_id") != job_id):
+        abort(404)
+    return job
+
+
+def accessible_dataset(dataset_id):
+    dataset = get_db().execute(
+        "SELECT * FROM datasets WHERE id = ? AND user_id IS ? AND status = 'completed'", (dataset_id, current_user_id())
+    ).fetchone()
+    if not dataset:
+        abort(404)
+    return dataset
+
+
+@bp.route("/", methods=["GET", "POST"])
 def index():
+    error = None
     if request.method == "POST":
-
-        uploaded_csv = request.files.get("file")
-
-        if uploaded_csv.filename == "":
-            return "No File Input"
-        
-        if not uploaded_csv.filename.lower().endswith(".csv"):
-            return "Invalid file type. Please upload a CSV file."
-
-        raw_text = uploaded_csv.read().decode("utf-8", errors="replace")
-        reader = csv.reader(raw_text.splitlines())
-
-        csv_headers = next(reader, None)
-
-        if csv_headers == ["\ufeff"]:
-            return "Empty CSV file"
-        
-        missing_headers = set(Headers) - set(csv_headers)
-
-        if missing_headers:
-            return (
-                "<pre>"
-                f"Missing Required Columns: \n"
-                f"{', '.join(missing_headers)}"
-                "</pre>"
-            )
-        
-        process_csv(raw_text)
-
-        if "user_id" in session:
-            conn = get_db()
-            cur = conn.cursor()
-            uploaded_csv.seek(0)
-            raw_text = uploaded_csv.read().decode("utf-8", errors="replace")
-
-            cur.execute(
-                "INSERT INTO datasets (user_id, filename, raw_csv) VALUES (?, ?, ?)",
-                (session["user_id"], uploaded_csv.filename, raw_text)
-            )
-            conn.commit()
-            conn.close()
+        upload = request.files.get("file")
+        if not upload or not upload.filename:
+            error = "Choose a CSV file to upload."
+        else:
+            try:
+                job_id, duplicate = enqueue_job(get_db(), upload.filename, upload.read(), current_user_id())
+            except FileValidationError as exc:
+                error = str(exc)
+            else:
+                session["last_job_id"] = job_id
+                return redirect(url_for("main.job_status", job_id=job_id, duplicate=int(duplicate)))
+    return render_template("upload.html", error=error)
 
 
-        return render_template(
-            "dashboard.html",
-            total_rows = total_rows,
-            valid_rows = len(valid_rows),
-            invalid_rows = len(invalid_rows),
-            valid_pct = valid_pct,
-            error_counts = error_counts,
-            total_amount = round(total_amount,2),
-            category_counts = category_counts,
-            status_counts = status_counts
-            )
-        
-    return render_template("upload.html")
+@bp.route("/jobs/<int:job_id>")
+def job_status(job_id):
+    accessible_job(job_id)
+    return render_template("ingestion.html", report=quality_report(get_db(), job_id), duplicate=request.args.get("duplicate") == "1")
 
-@app.route("/dashboard")
+
+@bp.route("/api/jobs/<int:job_id>")
+def job_status_api(job_id):
+    accessible_job(job_id)
+    job = dict(quality_report(get_db(), job_id)["job"])
+    job["result_url"] = url_for("main.overview", dataset_id=job["dataset_id"]) if job["dataset_id"] else None
+    return jsonify(job)
+
+
+def dashboard_data(dataset_id):
+    connection = get_db()
+    dataset = accessible_dataset(dataset_id)
+    status_counts = {row[0]: row[1] for row in connection.execute(
+        "SELECT status, COUNT(*) FROM transactions WHERE dataset_id = ? GROUP BY status", (dataset_id,)
+    )}
+    category_counts = {row[0]: row[1] for row in connection.execute(
+        "SELECT category, COUNT(*) FROM transactions WHERE dataset_id = ? GROUP BY category", (dataset_id,)
+    )}
+    total_amount = connection.execute("SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE dataset_id = ?", (dataset_id,)).fetchone()[0]
+    failures = connection.execute(
+        """SELECT vr.rule || CASE WHEN vr.field IS NULL THEN '' ELSE ': ' || vr.field END, vr.failure_count
+           FROM validation_results vr JOIN ingestion_jobs j ON j.id = vr.job_id
+           WHERE j.dataset_id = ? ORDER BY vr.failure_count DESC""", (dataset_id,)
+    ).fetchall()
+    return dict(dataset=dataset, total_rows=dataset["total_rows"], valid_rows=dataset["accepted_rows"],
+                invalid_rows=dataset["rejected_rows"],
+                valid_pct=round(dataset["accepted_rows"] * 100 / dataset["total_rows"], 2) if dataset["total_rows"] else 0,
+                error_counts={row[0]: row[1] for row in failures}, total_amount=round(total_amount, 2),
+                category_counts=category_counts, status_counts=status_counts)
+
+
+@bp.route("/dashboard")
 def overview():
-    return render_template(
-            "dashboard.html",
-            total_rows = total_rows,
-            valid_rows = len(valid_rows),
-            invalid_rows = len(invalid_rows),
-            valid_pct = valid_pct,
-            error_counts = error_counts,
-            total_amount = round(total_amount,2),
-            category_counts = category_counts,
-            status_counts = status_counts
-            )
+    dataset_id = request.args.get("dataset_id", type=int) or session.get("active_dataset_id")
+    if not dataset_id:
+        return redirect(url_for("main.index"))
+    session["active_dataset_id"] = dataset_id
+    return render_template("dashboard.html", **dashboard_data(dataset_id))
 
-@app.route("/analytics")
+
+@bp.route("/analytics")
 def analytics():
-    avg_amount = (
-        sum(float(r["amount"]) for r in valid_rows) / len(valid_rows)
-        if valid_rows else 0
-    )
-
-    amounts = sorted(float(r["amount"]) for r in valid_rows)
-
-    n = len(amounts)
-    if n == 0:
-        median_amount = 0
-    elif n % 2 == 1:
-        median_amount = amounts[n//2]
-    else:
-        median_amount = (amounts[n//2 - 1] + amounts[n//2]) / 2
-    
-    mean = avg_amount
-
-    variance = (
-        sum((float(r["amount"]) - mean) ** 2 for r in valid_rows) / len(valid_rows)
-        if valid_rows else 0
-        )
-    
-    std_dev_amount = math.sqrt(variance)
-
-    cof_var = (std_dev_amount/avg_amount) * 100 if avg_amount != 0 else 0
-
-    daily_counts = defaultdict(int)
-
-
-    for row in valid_rows + [r["row"] for r in invalid_rows]:
-        ts = row.get("timestamp")
-        try:
-            date = datetime.fromisoformat(ts.replace(" ", "T")).date()
-            daily_counts[str(date)] += 1
-        except:
-            continue
-
-    sorted_days = sorted(daily_counts.items())
-
-    if not sorted_days:
-        dates = []
-        counts = []
-    else:
-        MAX_POINTS = len(sorted_days)
-        if len(sorted_days) > MAX_POINTS:
-            step = max(1, len(sorted_days) // MAX_POINTS)
-            sampled = sorted_days[::step]
-        else:
-            sampled = sorted_days
-
-        dates = [
-            datetime.strptime(d, "%Y-%m-%d").strftime("%b %d")
-            for d, _ in sampled
-        ]
-        counts = [c for _, c in sampled]
+    dataset_id = request.args.get("dataset_id", type=int) or session.get("active_dataset_id")
+    if not dataset_id:
+        return redirect(url_for("main.index"))
+    accessible_dataset(dataset_id)
+    rows = get_db().execute(
+        "SELECT occurred_at, amount, category, status FROM transactions WHERE dataset_id = ? ORDER BY occurred_at", (dataset_id,)
+    ).fetchall()
+    amounts = sorted(row["amount"] for row in rows)
+    count = len(amounts)
+    average = sum(amounts) / count if count else 0
+    median = amounts[count // 2] if count % 2 else ((amounts[count // 2 - 1] + amounts[count // 2]) / 2 if count else 0)
+    variance = sum((amount - average) ** 2 for amount in amounts) / count if count else 0
+    daily, category_amounts = defaultdict(int), defaultdict(float)
+    status_by_category = defaultdict(lambda: {"Completed": 0, "Pending": 0, "Error": 0})
+    buckets = {"<10": 0, "10-50": 0, "50-200": 0, "200+": 0}
+    for row in rows:
+        daily[row["occurred_at"][:10]] += 1
+        category_amounts[row["category"]] += row["amount"]
+        status_by_category[row["category"]][row["status"].capitalize()] += 1
+        key = "<10" if row["amount"] < 10 else "10-50" if row["amount"] < 50 else "50-200" if row["amount"] < 200 else "200+"
+        buckets[key] += 1
+    return render_template("analytics.html", avg_amount=round(average, 2), median_amount=round(median, 2),
+        std_dev_amount=round(math.sqrt(variance), 2), cof_var=round(math.sqrt(variance) / average * 100, 2) if average else 0,
+        dates=list(daily), daily_counts=list(daily.values()), buckets=buckets, category_amounts=dict(category_amounts),
+        status_by_category=dict(status_by_category), min_amount=min(amounts) if amounts else 0,
+        max_amount=max(amounts) if amounts else 0, amount_range=(max(amounts) - min(amounts)) if amounts else 0,
+        unique_categories=len(category_amounts), unique_statuses=len({row["status"] for row in rows}))
 
 
-    buckets = {
-        "<10":0,
-        "10-50":0,
-        "50-200":0,
-        "200+":0
-    }
-
-    for r in valid_rows:
-        amt = float(r["amount"])
-        if amt < 10:
-            buckets["<10"] += 1
-        elif amt < 50:
-            buckets["10-50"] +=1
-        elif amt < 200:
-            buckets["50-200"] += 1
-        else:
-            buckets["200+"] +=1
-
-    category_amounts = {}
-
-    for r in valid_rows:
-        cat = r["category"]
-        category_amounts[cat] = category_amounts.get(cat, 0) + float(r["amount"])
-
-    status_by_category = {}
-
-    for r in valid_rows:
-        cat = r["category"]
-        status = r["status"].strip().capitalize()
-
-        if cat not in status_by_category:
-            status_by_category[cat] = {
-                "Completed": 0,
-                "Pending": 0,
-                "Error": 0
-            }
-
-        # guard in case status is unexpected
-        if status in status_by_category[cat]:
-            status_by_category[cat][status] += 1
-
-
-    
-    min_amount = min(amounts) if amounts else 0
-    max_amount = max(amounts) if amounts else 0
-    amount_range = max_amount - min_amount
-
-    unique_categories = len(set(r["category"] for r in valid_rows))
-    unique_statuses = len(set(r["status"] for r in valid_rows))
-
-    return render_template(
-        "analytics.html",
-        avg_amount=round(avg_amount, 2),
-        median_amount=round(median_amount, 2),
-        std_dev_amount=round(std_dev_amount, 2),
-        cof_var=round(cof_var, 2),
-        dates= dates,
-        daily_counts=counts,
-        buckets=buckets,
-        category_amounts=category_amounts,
-        status_by_category=status_by_category,
-        min_amount=min_amount,
-        max_amount=max_amount,
-        amount_range=amount_range,
-        unique_categories=unique_categories,
-        unique_statuses=unique_statuses
-)
-
-from flask import redirect, url_for
-
-@app.route("/saved")
+@bp.route("/saved")
 def saved():
-    if "user_id" not in session:
-        session["next"] = "/saved"
-        return redirect("/login")
-
-    conn = get_db()
-    cur = conn.cursor()
-
-    cur.execute(
-        """
-        SELECT id, filename, uploaded_at
-        FROM datasets
-        WHERE user_id = ?
-        ORDER BY uploaded_at DESC
-        """,
-        (session["user_id"],)
-    )
-
-    datasets = cur.fetchall()
-    conn.close()
-
-    return render_template("saved.html", datasets=datasets)
+    if not current_user_id():
+        session["next"] = url_for("main.saved")
+        return redirect(url_for("main.login"))
+    page = max(request.args.get("page", 1, type=int), 1)
+    per_page = min(max(request.args.get("per_page", 20, type=int), 1), 100)
+    datasets = get_db().execute(
+        """SELECT id, filename, uploaded_at, total_rows, accepted_rows, rejected_rows FROM datasets
+           WHERE user_id = ? AND status = 'completed' ORDER BY uploaded_at DESC, id DESC LIMIT ? OFFSET ?""",
+        (current_user_id(), per_page + 1, (page - 1) * per_page)).fetchall()
+    return render_template("saved.html", datasets=datasets[:per_page], page=page, has_next=len(datasets) > per_page)
 
 
-@app.route("/login", methods=["GET", "POST"])
+@bp.route("/saved/upload", methods=["POST"])
+def uploaded_saved():
+    if not current_user_id():
+        return redirect(url_for("main.login"))
+    return index()
+
+
+@bp.route("/open/<int:dataset_id>")
+def open_dataset(dataset_id):
+    accessible_dataset(dataset_id)
+    session["active_dataset_id"] = dataset_id
+    return redirect(url_for("main.overview"))
+
+
+@bp.route("/delete/<int:dataset_id>", methods=["POST"])
+def delete_dataset(dataset_id):
+    if not current_user_id():
+        return redirect(url_for("main.login"))
+    with transaction(get_db(), immediate=True):
+        get_db().execute("DELETE FROM datasets WHERE id = ? AND user_id = ?", (dataset_id, current_user_id()))
+    return redirect(url_for("main.saved"))
+
+
+@bp.route("/login", methods=["GET", "POST"])
 def login():
+    error = None
     if request.method == "POST":
-        email = request.form["email"]
+        user = get_db().execute("SELECT id, password_hash FROM users WHERE email = ?", (request.form["email"].strip().lower(),)).fetchone()
+        if user and check_password_hash(user["password_hash"], request.form["password"]):
+            session.clear(); session["user_id"] = user["id"]
+            return redirect(request.args.get("next") or url_for("main.index"))
+        error = "Invalid email or password"
+    return render_template("login.html", error=error)
 
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute("SELECT id from users where email = ?", (email, ))
-        user = cur.fetchone()
-        conn.close()
 
-        if user:
-            session["user_id"] = user["id"]
-            
-            next_page = request.args.get("next") or session.pop("next", "/")
-            return redirect(next_page)
-        
-    return render_template("login.html")
-
-@app.route("/register", methods=["GET", "POST"])
+@bp.route("/register", methods=["GET", "POST"])
 def register():
+    error = None
     if request.method == "POST":
-        email = request.form["email"]
-        password = request.form["password"]
+        email, password = request.form["email"].strip().lower(), request.form["password"]
+        if len(password) < 8:
+            error = "Password must be at least 8 characters"
+        else:
+            try:
+                with transaction(get_db(), immediate=True):
+                    cursor = get_db().execute("INSERT INTO users(email, password_hash) VALUES (?, ?)", (email, generate_password_hash(password)))
+            except Exception:
+                error = "Email already registered"
+            else:
+                session.clear(); session["user_id"] = cursor.lastrowid
+                return redirect(url_for("main.index"))
+    return render_template("register.html", error=error)
 
-        conn = get_db()
-        cur = conn.cursor()
 
-        # check if user already exists
-        cur.execute(
-            "SELECT id FROM users WHERE email = ?",
-            (email,)
-        )
-        existing = cur.fetchone()
-
-        if existing:
-            conn.close()
-            return render_template(
-                "register.html",
-                error="Email already registered"
-            )
-
-        # create user (plain-text password, as requested)
-        cur.execute(
-            "INSERT INTO users (email, password_hash) VALUES (?, ?)",
-            (email, password)
-        )
-        conn.commit()
-
-        # log them in immediately
-        user_id = cur.lastrowid
-        conn.close()
-
-        session["user_id"] = user_id
-
-        next_page = session.pop("next", "/")
-        return redirect(next_page)
-
-    return render_template("register.html")
-
-@app.route("/logout")
+@bp.route("/logout", methods=["POST"])
 def logout():
     session.clear()
-    return redirect("/")
+    return redirect(url_for("main.index"))
 
-@app.route("/saved/upload", methods=["POST"])
-def uploaded_saved():
-    if "user_id" not in session:
-        session["next"] = "/saved"
-        return redirect("/login")
 
-    file = request.files.get("file")
-    if not file or file.filename == "":
-        return redirect("/saved")
+@bp.route("/health")
+def health():
+    return jsonify(status="ok")
 
-    raw_text = file.read().decode("utf-8", errors="replace")
 
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO datasets (user_id, filename, raw_csv) VALUES (?, ?, ?)",
-        (session["user_id"], file.filename, raw_text)
-    )
-    conn.commit()
-    conn.close()
+@bp.route("/ready")
+def ready():
+    try:
+        get_db().execute("SELECT 1").fetchone()
+    except Exception:
+        return jsonify(status="not_ready"), 503
+    return jsonify(status="ready")
 
-    process_csv(raw_text)
-    return redirect("/dashboard")
 
-@app.route("/delete/<int:dataset_id>")
-def delete_dataset(dataset_id):
-    if "user_id" not in session:
-        return redirect("/login")
-
-    conn = get_db()
-    cur = conn.cursor()
-
-    cur.execute(
-        """
-        DELETE FROM datasets
-        WHERE id = ? AND user_id = ?
-        """,
-        (dataset_id, session["user_id"])
-    )
-
-    conn.commit()
-    conn.close()
-
-    return redirect("/saved")
-
-@app.route("/open/<int:dataset_id>")
-def open_dataset(dataset_id):
-    if "user_id" not in session:
-        session["next"] = f"/open/{dataset_id}"
-        return redirect("/login")
-
-    conn = get_db()
-    cur = conn.cursor()
-
-    cur.execute(
-        """
-        SELECT raw_csv
-        FROM datasets
-        WHERE id = ? AND user_id = ?
-        """,
-        (dataset_id, session["user_id"])
-    )
-
-    row = cur.fetchone()
-    conn.close()
-
-    if not row:
-        return "Dataset not found", 404
-
-    raw_text = row["raw_csv"]
-    process_csv(raw_text)
-
-    return redirect("/dashboard")
-
-@app.context_processor
+@bp.app_context_processor
 def inject_user():
     user = None
-
-    if "user_id" in session:
-        conn = get_db()
-        cur = conn.cursor()
-
-        cur.execute(
-            "SELECT email FROM users WHERE id = ?",
-            (session["user_id"],)
-        )
-        row = cur.fetchone()
-        conn.close()
-
+    if current_user_id():
+        row = get_db().execute("SELECT email FROM users WHERE id = ?", (current_user_id(),)).fetchone()
         if row:
-            email = row["email"]
-            user = {
-                "email": email,
-                "name": email[:4],
-                "avatar": email[:2].upper()
-            }
-
-    return dict(current_user=user)
-
-def process_csv(raw_text):
-    global valid_rows, invalid_rows, error_counts
-    global total_rows, valid_pct, status_counts, category_counts, total_amount
-
-    valid_rows = []
-    invalid_rows = []
-    error_counts = {}
-    status_counts = {}
-    category_counts = {}
-    total_amount = 0.0
-
-    reader = csv.DictReader(raw_text.splitlines())
-
-    for row in reader:
-        errors = []
-
-        for field in Headers:
-            if not row.get(field):
-                errors.append(f"Missing {field}")
-
-        if row.get("amount") and not valid_amount(row["amount"]):
-            errors.append("Invalid Amount")
-
-        if row.get("timestamp") and not valid_timestamp(row["timestamp"]):
-            errors.append("Invalid Timestamp")
-
-        if errors:
-            invalid_rows.append({"row": row, "errors": errors})
-            for err in errors:
-                error_counts[err] = error_counts.get(err, 0) + 1
-        else:
-            valid_rows.append(row)
-
-    total_rows = len(valid_rows) + len(invalid_rows)
-    valid_pct = round((len(valid_rows) / total_rows) * 100, 2) if total_rows else 0
-
-    for row in valid_rows:
-        total_amount += float(row["amount"])
-        category_counts[row["category"]] = category_counts.get(row["category"], 0) + 1
-        status_counts[row["status"]] = status_counts.get(row["status"], 0) + 1
+            user = {"email": row["email"], "name": row["email"].split("@")[0], "avatar": row["email"][:2].upper()}
+    return {"current_user": user}

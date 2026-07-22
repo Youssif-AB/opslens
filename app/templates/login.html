@@ -20,6 +20,7 @@
     <div class="auth-card">
       <h1>Sign in</h1>
       <p class="auth-subtext">Access your saved datasets</p>
+      {% if error %}<p class="error-message">{{ error }}</p>{% endif %}
 
       <form method="POST">
         <input type="email" name="email" placeholder="Email" required>

@@ -891,3 +891,15 @@ canvas {
 .btn-upload:hover {
   background: #059669;
 }
+
+.job-card { max-width: 900px; overflow: auto; }
+.quality-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 18px 0; }
+.quality-grid div { background: #1f2430; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; }
+.quality-grid strong { font-size: 24px; }
+.quality-grid span { color: #9ca3af; }
+.quality-table { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
+.quality-table th, .quality-table td { border-bottom: 1px solid #414453; padding: 8px; text-align: left; }
+.error-message { color: #fca5a5; }
+.notice { background: #1e3a5f; border-radius: 8px; padding: 10px; }
+.link-button { border: 0; background: none; cursor: pointer; padding: 0; }
+.pagination { display: flex; gap: 8px; }

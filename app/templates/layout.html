@@ -56,7 +56,7 @@
                     <div class="avatar">{{ current_user.avatar }}</div>
                     <div class="name">{{ current_user.name }}</div>
                     </div>
-                    <a href="/logout" class="switch">Sign Out</a>
+                    <form method="post" action="{{ url_for('main.logout') }}"><button class="switch link-button" type="submit">Sign Out</button></form>
                 {% else %}
                     <a href="/login" class="switch-signin">Sign In</a>
                 {% endif %}
