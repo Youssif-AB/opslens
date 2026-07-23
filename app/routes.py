@@ -1,3 +1,4 @@
+import json
 import math
 from collections import defaultdict
 
@@ -52,7 +53,16 @@ def index():
 @bp.route("/jobs/<int:job_id>")
 def job_status(job_id):
     accessible_job(job_id)
-    return render_template("ingestion.html", report=quality_report(get_db(), job_id), duplicate=request.args.get("duplicate") == "1")
+    report = quality_report(get_db(), job_id)
+    rejected_rows = []
+    for row in report["rejected_sample"]:
+        rejected_rows.append({"row_number": row["row_number"], "reasons": json.loads(row["reasons"])})
+    return render_template(
+        "ingestion.html",
+        report=report,
+        rejected_rows=rejected_rows,
+        duplicate=request.args.get("duplicate") == "1",
+    )
 
 
 @bp.route("/api/jobs/<int:job_id>")

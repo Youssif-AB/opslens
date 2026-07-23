@@ -1,22 +1,128 @@
 {% extends "layout.html" %}
 {% block content %}
-<h1>Ingestion job #{{ report.job.id }}</h1>
-{% if duplicate %}<p class="notice">This file already has an active or completed ingestion. Showing the existing result.</p>{% endif %}
-<section class="card job-card">
-  <h2>Status: <span id="job-status">{{ report.job.status }}</span></h2>
-  <p>{{ report.job.filename }} · schema {{ report.job.schema_version }}</p>
-  {% if report.job.status == 'failed' %}<p class="error-message">{{ report.job.error_message }}</p>{% endif %}
-  {% if report.job.status == 'completed' %}
-  <div class="quality-grid">
-    <div><strong>{{ report.job.total_rows }}</strong><span>Total</span></div><div><strong>{{ report.job.accepted_rows }}</strong><span>Accepted</span></div>
-    <div><strong>{{ report.job.rejected_rows }}</strong><span>Rejected</span></div><div><strong>{{ report.job.duplicate_rows }}</strong><span>Duplicates</span></div>
+{% set job = report.job %}
+{% set accepted_pct = ((job.accepted_rows / job.total_rows) * 100) | round(1) if job.total_rows else 0 %}
+
+<div class="ingestion-page">
+  <header class="ingestion-header">
+    <div>
+      <div class="page-eyebrow"><i class="fa-solid fa-code-branch"></i> Ingestion pipeline</div>
+      <h1>{{ job.filename }}</h1>
+      <div class="job-meta">
+        <span><i class="fa-solid fa-hashtag"></i> Job {{ job.id }}</span>
+        <span><i class="fa-solid fa-layer-group"></i> {{ job.schema_version }}</span>
+        {% if job.processing_ms is not none %}<span><i class="fa-regular fa-clock"></i> {{ job.processing_ms }} ms</span>{% endif %}
+      </div>
+    </div>
+    <div class="status-badge status-{{ job.status }}">
+      <span class="status-dot"></span>
+      <span id="job-status">{{ job.status | capitalize }}</span>
+    </div>
+  </header>
+
+  {% if duplicate %}
+  <div class="ingestion-notice">
+    <i class="fa-solid fa-copy"></i>
+    <div><strong>Already ingested</strong><span>OpsLens found the same file and returned its existing result.</span></div>
   </div>
-  <h3>Validation failures</h3><ul>{% for failure in report.failures %}<li>{{ failure.rule }}{% if failure.field %} ({{ failure.field }}){% endif %}: {{ failure.failure_count }}</li>{% else %}<li>No validation failures</li>{% endfor %}</ul>
-  {% if report.rejected_sample %}<h3>Rejected row sample</h3><table class="quality-table"><tr><th>Row</th><th>Reasons</th></tr>{% for row in report.rejected_sample %}<tr><td>{{ row.row_number }}</td><td>{{ row.reasons }}</td></tr>{% endfor %}</table>{% endif %}
-  <a class="btn btn-open" href="{{ url_for('main.overview', dataset_id=report.job.dataset_id) }}">Open report</a>
-  {% else %}<p>The worker will process this upload in the background.</p>{% endif %}
-</section>
-{% if report.job.status in ('queued', 'processing') %}<script>
-setTimeout(async function poll(){const response=await fetch("{{ url_for('main.job_status_api', job_id=report.job.id) }}");const job=await response.json();document.getElementById("job-status").textContent=job.status;if(job.status==="completed"||job.status==="failed")location.reload();else setTimeout(poll,1000);},1000);
+  {% endif %}
+
+  {% if job.status == 'completed' %}
+  <section class="ingestion-summary">
+    <div class="acceptance-card card">
+      <div class="acceptance-ring" style="--accepted: {{ accepted_pct }}deg; --accepted-turn: {{ accepted_pct * 3.6 }}deg;">
+        <div><strong>{{ accepted_pct }}%</strong><span>accepted</span></div>
+      </div>
+      <div class="acceptance-copy">
+        <span class="section-kicker">Quality result</span>
+        <h2>Processing complete</h2>
+        <p>Valid transactions were loaded. Rejected rows were kept out of the dataset and recorded below.</p>
+      </div>
+    </div>
+
+    <div class="quality-grid">
+      <div class="quality-metric metric-blue"><i class="fa-solid fa-database"></i><div><span>Total rows</span><strong>{{ job.total_rows }}</strong></div></div>
+      <div class="quality-metric metric-green"><i class="fa-solid fa-circle-check"></i><div><span>Accepted</span><strong>{{ job.accepted_rows }}</strong></div></div>
+      <div class="quality-metric metric-orange"><i class="fa-solid fa-triangle-exclamation"></i><div><span>Rejected</span><strong>{{ job.rejected_rows }}</strong></div></div>
+      <div class="quality-metric metric-purple"><i class="fa-solid fa-clone"></i><div><span>Duplicates</span><strong>{{ job.duplicate_rows }}</strong></div></div>
+    </div>
+  </section>
+
+  <div class="ingestion-results-grid">
+    <section class="card quality-panel">
+      <div class="panel-heading">
+        <div><span class="section-kicker">Data quality</span><h2>Validation failures</h2></div>
+        <span class="panel-count">{{ report.failures | length }} rules</span>
+      </div>
+      <div class="failure-list">
+        {% for failure in report.failures %}
+        {% set failure_pct = (failure.failure_count / job.rejected_rows * 100) if job.rejected_rows else 0 %}
+        <div class="failure-item">
+          <div class="failure-label">
+            <span>{{ failure.rule | replace('_', ' ') | title }}{% if failure.field %}<small>{{ failure.field | replace('_', ' ') }}</small>{% endif %}</span>
+            <strong>{{ failure.failure_count }}</strong>
+          </div>
+          <div class="failure-track"><span style="width: {{ [failure_pct, 100] | min }}%"></span></div>
+        </div>
+        {% else %}
+        <div class="empty-quality"><i class="fa-solid fa-shield-halved"></i><p>No validation failures found.</p></div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card policy-panel">
+      <div class="policy-icon"><i class="fa-solid fa-filter-circle-xmark"></i></div>
+      <span class="section-kicker">Load policy</span>
+      <h2>Valid rows only</h2>
+      <p>Rejected rows were not silently dropped. OpsLens counted every failure and saved a diagnostic sample.</p>
+      <div class="policy-stat"><span>Rows excluded</span><strong>{{ job.rejected_rows }}</strong></div>
+      <div class="policy-stat"><span>Sample shown</span><strong>{{ rejected_rows | length }}</strong></div>
+    </section>
+  </div>
+
+  {% if rejected_rows %}
+  <section class="card rejected-panel">
+    <div class="panel-heading">
+      <div><span class="section-kicker">Diagnostic sample</span><h2>Rejected rows</h2></div>
+      <span class="panel-count">Showing {{ rejected_rows | length }} of {{ job.rejected_rows }}</span>
+    </div>
+    <div class="quality-table-wrap">
+      <table class="quality-table">
+        <thead><tr><th>CSV row</th><th>Why it was rejected</th></tr></thead>
+        <tbody>
+        {% for row in rejected_rows %}
+          <tr>
+            <td><span class="row-number">{{ row.row_number }}</span></td>
+            <td><div class="reason-list">{% for reason in row.reasons %}<span class="reason-chip"><i class="fa-solid fa-circle-exclamation"></i>{{ reason.rule | replace('_', ' ') }}{% if reason.field %}<b>{{ reason.field | replace('_', ' ') }}</b>{% endif %}</span>{% endfor %}</div></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+
+  <div class="ingestion-actions">
+    <a class="primary-action" href="{{ url_for('main.overview', dataset_id=job.dataset_id) }}"><i class="fa-solid fa-chart-column"></i> Open report</a>
+    <a class="secondary-action" href="{{ url_for('main.index') }}"><i class="fa-solid fa-arrow-up-from-bracket"></i> Upload another</a>
+  </div>
+
+  {% elif job.status == 'failed' %}
+  <section class="card state-card state-failed">
+    <i class="fa-solid fa-circle-xmark"></i><span class="section-kicker">Processing stopped</span><h2>We couldn’t ingest this file</h2>
+    <p>{{ job.error_message }}</p><a class="primary-action" href="{{ url_for('main.index') }}">Try another file</a>
+  </section>
+  {% else %}
+  <section class="card state-card state-active">
+    <div class="processing-orbit"><i class="fa-solid fa-file-csv"></i></div>
+    <span class="section-kicker">Background processing</span><h2>Your report is {{ job.status }}</h2>
+    <p>You can leave this page. OpsLens is validating and loading the file, and this status will update automatically.</p>
+    <div class="pipeline-steps"><span class="done">Uploaded</span><span class="{{ 'active' if job.status == 'processing' else '' }}">Validating</span><span>Loading</span><span>Complete</span></div>
+  </section>
+  {% endif %}
+</div>
+
+{% if job.status in ('queued', 'processing') %}<script>
+setTimeout(async function poll(){const response=await fetch("{{ url_for('main.job_status_api', job_id=job.id) }}");const job=await response.json();document.getElementById("job-status").textContent=job.status.charAt(0).toUpperCase()+job.status.slice(1);if(job.status==="completed"||job.status==="failed")location.reload();else setTimeout(poll,1000);},1000);
 </script>{% endif %}
 {% endblock %}
