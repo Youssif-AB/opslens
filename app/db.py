@@ -148,7 +148,7 @@ def migrate(connection):
                 if existing and column not in existing:
                     connection.execute(f"ALTER TABLE datasets ADD COLUMN {column} {definition}")
             connection.executescript(script)
-            connection.execute("INSERT INTO schema_migrations(version) VALUES (?)", (version,))
+            connection.execute("INSERT OR IGNORE INTO schema_migrations(version) VALUES (?)", (version,))
 
 
 def init_db():

@@ -15,6 +15,7 @@ __pycache__/
 data/*.db-shm
 data/*.db-wal
 instance/
+/*.csv
 
 # OS junk
 .DS_Store
