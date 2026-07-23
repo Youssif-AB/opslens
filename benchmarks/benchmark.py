@@ -25,6 +25,10 @@ def csv_fixture(row_count, prefix="T"):
 
 
 def timed(callable_, repeats=25):
+    # Warm filesystem/database caches so index-build activity and cold reads do not
+    # dominate a small local latency measurement.
+    for _ in range(10):
+        list(callable_())
     samples = []
     for _ in range(repeats):
         started = time.perf_counter()

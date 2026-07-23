@@ -77,10 +77,10 @@ Tests cover valid and invalid schemas, malformed rows, type/missing/duplicate ru
 
 The benchmark generates deterministic data; it does not use the untracked sample reports. It compares the same queries without and with the production indexes over 100,000 rows (25 repetitions), and measures the validation plus load path at 1,000, 5,000, and 10,000 rows. Local results from 2026-08-23 are in [benchmarks/results.md](benchmarks/results.md):
 
-- time-range median: 9.235 ms before, 6.034 ms after
-- category-range median: 6.962 ms before, 4.228 ms after
-- status aggregate median: 5.518 ms before, 1.185 ms after
-- ingestion throughput: 16,953.7 rows/s at 1k; 22,548.2 at 5k; 22,033.2 at 10k
+- time-range median: 25.855 ms before, 18.662 ms after
+- category-range median: 19.125 ms before, 14.397 ms after
+- status aggregate median: 18.860 ms before, 5.653 ms after
+- ingestion throughput: 3,456.3 rows/s at 1k; 5,586.8 at 5k; 10,702.8 at 10k
 
 These figures describe one local run, not a production capacity guarantee.
 
