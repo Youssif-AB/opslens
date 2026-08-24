@@ -40,6 +40,8 @@ An identical successful or active upload for the same user returns the existing 
 
 Foreign keys use cascades where ownership is clear. History pagination uses `(user_id, uploaded_at, id)`. Report filters use `(dataset_id, occurred_at)`, `(dataset_id, category, occurred_at)`, and `(dataset_id, status)`.
 
+The SQLite database is runtime state, not source code. It is created and migrated automatically on startup and is ignored by Git.
+
 ## Run locally
 
 With Python 3.12+:
@@ -64,7 +66,7 @@ $env:OPSLENS_SECRET_KEY = "replace-this-locally"
 docker compose up --build
 ```
 
-Open `http://localhost:8000`. `/health` checks the web process and `/ready` verifies database access. The worker logs job IDs, duration, accepted/rejected counts, and failures as searchable key-value fields. Jobs left processing for 30 minutes are recovered when a worker starts.
+Open `http://localhost:8005`. `/health` checks the web process and `/ready` verifies database access. The worker logs job IDs, duration, accepted/rejected counts, and failures as searchable key-value fields. Jobs left processing for 30 minutes are recovered when a worker starts.
 
 ## Tests and benchmarks
 
@@ -73,9 +75,9 @@ Open `http://localhost:8000`. `/health` checks the web process and `/ready` veri
 .venv\Scripts\python.exe -m benchmarks.benchmark
 ```
 
-Tests cover valid and invalid schemas, malformed rows, type/missing/duplicate rules, quality persistence, idempotency, rollback after staging, successful/failed status, single claiming, uploads, file types, pagination, password hashing, health, and readiness. CI installs pinned dependencies, compiles Python sources, and runs the same tests.
+Tests cover valid and invalid schemas, malformed rows, type/missing/duplicate rules, quality persistence, idempotency, rollback after staging, successful/failed status, single claiming, uploads, file types, pagination, password hashing, health, and readiness. CI runs Ruff, compiles Python sources, executes the test suite, validates Docker Compose, starts the web/worker stack, and checks readiness and liveness endpoints.
 
-The benchmark generates deterministic data; it does not use the untracked sample reports. It compares the same queries without and with the production indexes over 100,000 rows (25 repetitions), and measures the validation plus load path at 1,000, 5,000, and 10,000 rows. Local results from 2026-08-23 are in [benchmarks/results.md](benchmarks/results.md):
+The benchmark generates deterministic data; it does not use local runtime reports. It compares the same queries without and with the production indexes over 100,000 rows (25 repetitions), and measures the validation plus load path at 1,000, 5,000, and 10,000 rows. Local results from 2026-08-23 are in [benchmarks/results.md](benchmarks/results.md):
 
 - time-range median: 25.855 ms before, 18.662 ms after
 - category-range median: 19.125 ms before, 14.397 ms after
@@ -90,4 +92,4 @@ These figures describe one local run, not a production capacity guarantee.
 - CSV data is held in memory during validation, bounded by the 10 MiB request limit. Larger streaming workloads need a different parser/storage boundary.
 - Job polling is intentionally simple; there are no WebSockets.
 - Rejected-row storage is diagnostic and capped at 25 rows, while all failure counts remain available.
-- The tracked legacy `data/opslens.db` is migrated in place. Back it up before using a new application version against important data.
+- Runtime database files are intentionally untracked. Back up the persistent SQLite volume before applying a new application version to important data.
