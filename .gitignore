@@ -12,6 +12,7 @@ __pycache__/
 .env
 
 # local runtime data
+data/*.db
 data/*.db-shm
 data/*.db-wal
 instance/
